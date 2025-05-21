@@ -19,16 +19,31 @@ model User {
 }
 
 model Client {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
   name       String
-  phone      String   @unique
-  language   String   // e.g., 'hi', 'ta', 'en'
+  phone      String        @unique
+  language   String        // e.g., 'hi', 'ta', 'en'
   age        Int?
   gender     String?
   income     Float?
-  goals      String[] // e.g., ["education", "retirement"]
-  createdAt  DateTime @default(now())
-  agentId    String   @db.ObjectId
-  agent      User     @relation(fields: [agentId], references: [id])
+  goals      String[]      // e.g., ["education", "retirement"]
+  createdAt  DateTime      @default(now())
+  agentId    String        @db.ObjectId
+  agent      User          @relation(fields: [agentId], references: [id])
+  investments Investment[] // Added relation to Investment
+}
+
+model Investment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String   @db.ObjectId
+  client        Client   @relation(fields: [clientId], references: [id])
+  type          String   // E.g., "Small Cap", "Gold", etc.
+  amount        Float
+  startDate     DateTime
+  status        String   // E.g., "active", "matured", "withdrawn"
+  returns       Float?   // Optional: calculated or reported
+  source        String?  // Optional: e.g., "PartnerAPI", "Manual"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
