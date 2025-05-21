@@ -14,4 +14,21 @@ model User {
   password  String?
   role      String   @default("agent")
   createdAt DateTime @default(now())
+
+  Client Client[]
 }
+
+model Client {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  phone      String   @unique
+  language   String   // e.g., 'hi', 'ta', 'en'
+  age        Int?
+  gender     String?
+  income     Float?
+  goals      String[] // e.g., ["education", "retirement"]
+  createdAt  DateTime @default(now())
+  agentId    String   @db.ObjectId
+  agent      User     @relation(fields: [agentId], references: [id])
+}
+
