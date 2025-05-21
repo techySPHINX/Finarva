@@ -11,9 +11,10 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChatbotModule } from './ai/chatbot/chatbot.module';
 import { LeadScoringModule } from './ai/lead-scoring/lead-scoring.module';
 import { FinancialHealthModule } from './ai/financial-health/financial-health.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, ClientsModule, InsuranceModule, InvestmentModule, LearningModule, SchedulerModule, ChatbotModule, LeadScoringModule, FinancialHealthModule],
+  imports: [DatabaseModule, AuthModule, ClientsModule, InsuranceModule, InvestmentModule, LearningModule, SchedulerModule, ChatbotModule, LeadScoringModule, FinancialHealthModule, PrismaModule],
   controllers: [AppController],
   providers: [AppService],
 })
