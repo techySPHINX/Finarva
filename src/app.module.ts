@@ -12,9 +12,10 @@ import { ChatbotModule } from './ai/chatbot/chatbot.module';
 import { LeadScoringModule } from './ai/lead-scoring/lead-scoring.module';
 import { FinancialHealthModule } from './ai/financial-health/financial-health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { QuizModule } from './quiz/quiz.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, ClientsModule, InsuranceModule, InvestmentModule, LearningModule, SchedulerModule, ChatbotModule, LeadScoringModule, FinancialHealthModule, PrismaModule],
+  imports: [DatabaseModule, AuthModule, ClientsModule, InsuranceModule, InvestmentModule, LearningModule, SchedulerModule, ChatbotModule, LeadScoringModule, FinancialHealthModule, PrismaModule, QuizModule],
   controllers: [AppController],
   providers: [AppService],
 })

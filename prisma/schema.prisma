@@ -16,6 +16,8 @@ model User {
   createdAt DateTime @default(now())
 
   Client Client[]
+
+  LearningContent LearningContent[]
 }
 
 model Client {
@@ -47,3 +49,45 @@ model Investment {
   updatedAt     DateTime @updatedAt
 }
 
+model LearningContent {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  type        String   // e.g., "video", "audio", "pdf"
+  url         String
+  language    String   // e.g., "hi", "ta", "en"
+  tags        String[] // e.g., ["insurance", "investment"]
+  createdById String   @db.ObjectId
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Quiz {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  tags        String[]   // E.g., ['insurance', 'investment']
+  language    String     // E.g., 'hi', 'en'
+  createdAt   DateTime   @default(now())
+  createdBy   String     @db.ObjectId
+  questions   Question[]
+}
+
+model Question {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  quizId    String   @db.ObjectId
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  question  String
+  options   String[] // 4 options stored in array
+  answer    String   // correct answer text
+  language  String
+}
+
+model ClientQuizAttempt {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId   String   @db.ObjectId
+  quizId     String   @db.ObjectId
+  score      Int
+  answers    String[] // selected options
+  createdAt  DateTime @default(now())
+}
