@@ -13,60 +13,56 @@ import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
-import {
-  ApiTags,
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-  ApiParam,
-} from '@nestjs/swagger';
+import { AiService } from '../ai/ai.service';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('Clients')
-@ApiBearerAuth() // Enables JWT auth input in Swagger UI
+@ApiBearerAuth()
 @Controller('clients')
 @UseGuards(JwtAuthGuard)
 export class ClientsController {
-  constructor(private readonly clientsService: ClientsService) {}
+  constructor(
+    private readonly clientsService: ClientsService,
+    private readonly aiService: AiService,
+  ) {}
+
   @Post()
   @ApiOperation({ summary: 'Create a new client' })
-  @ApiResponse({ status: 201, description: 'Client created successfully' })
   @ApiBody({ type: CreateClientDto })
+  @ApiResponse({ status: 201, description: 'Client created successfully' })
   async create(@Body() dto: CreateClientDto, @Req() req: any) {
     const agentId = req.user.id;
-    return await this.clientsService.create(dto, agentId);
+    return this.clientsService.create(dto, agentId);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all clients for logged-in agent' })
-  @ApiResponse({ status: 200, description: 'List of clients' })
+  @ApiOperation({ summary: 'Get all clients for agent' })
   async findAll(@Req() req: any) {
-    return await this.clientsService.findAllByAgent(req.user.id);
+    return this.clientsService.findAllByAgent(req.user.id);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a single client by ID' })
-  @ApiParam({ name: 'id', required: true, description: 'Client ID' })
-  @ApiResponse({ status: 200, description: 'Client found' })
+  @ApiOperation({ summary: 'Get a client by ID' })
   async findOne(@Param('id') id: string) {
-    return await this.clientsService.findOne(id);
+    return this.clientsService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a client' })
-  @ApiParam({ name: 'id', required: true })
-  @ApiBody({ type: UpdateClientDto })
-  @ApiResponse({ status: 200, description: 'Client updated' })
   async update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
-    return await this.clientsService.update(id, dto);
+    return this.clientsService.update(id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a client' })
-  @ApiParam({ name: 'id', required: true })
-  @ApiResponse({ status: 200, description: 'Client deleted' })
   async remove(@Param('id') id: string) {
-    return await this.clientsService.remove(id);
+    return this.clientsService.remove(id);
+  }
+
+  @Get(':id/insights')
+  @ApiOperation({ summary: 'Get AI insights for a client' })
+  async getClientAiInsights(@Param('id') id: string) {
+    const profile = await this.clientsService.getClientProfile(id);
+    return this.aiService.analyzeProfile(profile);
   }
 }
