@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { Client } from '@prisma/client';
+import { ClientProfileDto } from './dto/client-profile.dto';
 
 @Injectable()
 export class ClientsService {
@@ -51,5 +52,20 @@ export class ClientsService {
     }
 
     return this.prisma.client.delete({ where: { id } });
+  }
+
+  async getClientProfile(id: string): Promise<ClientProfileDto> {
+    const client = await this.findOne(id);
+    return {
+      id: client.id,
+      name: client.name,
+      phone: client.phone,
+      language: client.language,
+      age: client.age ?? undefined,
+      gender: client.gender ?? undefined,
+      income: client.income ?? undefined,
+      goals: client.goals,
+      agentId: client.agentId,
+    };
   }
 }

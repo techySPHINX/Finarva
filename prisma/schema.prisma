@@ -8,32 +8,42 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  name      String?
-  password  String?
-  role      String   @default("agent")
-  createdAt DateTime @default(now())
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  email            String            @unique
+  name             String?
+  password         String?
+  role             String            @default("agent")
+  createdAt        DateTime          @default(now())
 
-  Client Client[]
-
-  LearningContent LearningContent[]
+  Client           Client[]
+  LearningContent  LearningContent[]
 }
 
 model Client {
-  id         String        @id @default(auto()) @map("_id") @db.ObjectId
-  name       String
-  phone      String        @unique
-  language   String        // e.g., 'hi', 'ta', 'en'
-  age        Int?
-  gender     String?
-  income     Float?
-  goals      String[]      // e.g., ["education", "retirement"]
-  createdAt  DateTime      @default(now())
-  agentId    String        @db.ObjectId
-  agent      User          @relation(fields: [agentId], references: [id])
-  investments Investment[] // Added relation to Investment
+  id                    String               @id @default(auto()) @map("_id") @db.ObjectId
+  name                  String
+  phone                 String               @unique
+  language              String              
+  age                   Int?
+  gender                String?
+  income                Float?
+  goals                 String[]             // e.g., ["education", "retirement"]
+
+  occupation            String?              
+  interests             String[]             
+  preferredLanguage     String?           
+  investmentExperience  String?              
+
+  createdAt             DateTime             @default(now())
+  agentId               String               @db.ObjectId
+  agent                 User                 @relation(fields: [agentId], references: [id])
+
+  investments           Investment[]
+  quizAttempts          ClientQuizAttempt[]
+  learningProgress      LearningProgress[]
+  aiRecommendations     AIRecommendation[]
 }
+
 
 model Investment {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -50,16 +60,28 @@ model Investment {
 }
 
 model LearningContent {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  description String
-  type        String   // e.g., "video", "audio", "pdf"
-  url         String
-  language    String   // e.g., "hi", "ta", "en"
-  tags        String[] // e.g., ["insurance", "investment"]
-  createdById String   @db.ObjectId
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String
+  type          String   // e.g., "video", "audio", "pdf"
+  url           String
+  language      String   
+  tags          String[] // e.g., ["insurance", "investment"]
+  createdById   String   @db.ObjectId
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+
+  progress      LearningProgress[]
+}
+
+model LearningProgress {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String   @db.ObjectId
+  contentId     String   @db.ObjectId
+  viewedAt      DateTime @default(now())
+  completion    Float    
+  client        Client   @relation(fields: [clientId], references: [id])
+  content       LearningContent @relation(fields: [contentId], references: [id])
 }
 
 model Quiz {
@@ -67,10 +89,12 @@ model Quiz {
   title       String
   description String
   tags        String[]   // E.g., ['insurance', 'investment']
-  language    String     // E.g., 'hi', 'en'
+  language    String     
   createdAt   DateTime   @default(now())
   createdBy   String     @db.ObjectId
   questions   Question[]
+
+  ClientQuizAttempt ClientQuizAttempt[]
 }
 
 model Question {
@@ -78,8 +102,8 @@ model Question {
   quizId    String   @db.ObjectId
   quiz      Quiz     @relation(fields: [quizId], references: [id])
   question  String
-  options   String[] // 4 options stored in array
-  answer    String   // correct answer text
+  options   String[] 
+  answer    String   
   language  String
 }
 
@@ -88,6 +112,19 @@ model ClientQuizAttempt {
   clientId   String   @db.ObjectId
   quizId     String   @db.ObjectId
   score      Int
-  answers    String[] // selected options
+  answers    String[] 
   createdAt  DateTime @default(now())
+
+  client     Client   @relation(fields: [clientId], references: [id])
+  quiz       Quiz     @relation(fields: [quizId], references: [id])
+}
+
+model AIRecommendation {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String   @db.ObjectId
+  type          String   // "quiz", "learning", "investment"
+  suggestion    String   
+  metadata      Json     // Optional details like topic, confidence
+  createdAt     DateTime @default(now())
+  client        Client   @relation(fields: [clientId], references: [id])
 }
