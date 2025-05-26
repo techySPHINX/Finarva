@@ -75,13 +75,16 @@ model LearningContent {
 }
 
 model LearningProgress {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId      String   @db.ObjectId
-  contentId     String   @db.ObjectId
-  viewedAt      DateTime @default(now())
-  completion    Float    
-  client        Client   @relation(fields: [clientId], references: [id])
-  content       LearningContent @relation(fields: [contentId], references: [id])
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  clientId       String           @db.ObjectId
+  contentId      String           @db.ObjectId
+  viewedAt       DateTime         @default(now())
+  progress       Float           
+  lastAccessedAt DateTime         @default(now()) // new field
+  client         Client           @relation(fields: [clientId], references: [id])
+  content        LearningContent  @relation(fields: [contentId], references: [id])
+
+  @@unique([clientId, contentId]) 
 }
 
 model Quiz {

@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { LearningService } from './learning.service';
-import { CreateLearningDto } from './dto/create-learning.dto';
+import { CreateLearningContentDto } from './dto/create-learning-content.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   ApiTags,
@@ -19,6 +19,7 @@ import {
   ApiQuery,
   ApiBody,
 } from '@nestjs/swagger';
+import { RecordProgressDto } from './dto/record-progress.dto';
 
 @ApiTags('Learning Content')
 @ApiBearerAuth()
@@ -30,8 +31,8 @@ export class LearningController {
   @Post()
   @ApiOperation({ summary: 'Upload learning content (video, audio, PDF)' })
   @ApiResponse({ status: 201, description: 'Learning content created successfully' })
-  @ApiBody({ type: CreateLearningDto })
-  create(@Body() dto: CreateLearningDto, @Req() req: any) {
+  @ApiBody({ type: CreateLearningContentDto })
+  create(@Body() dto: CreateLearningContentDto, @Req() req: any) {
     return this.learningService.create(dto, req.user.id);
   }
 
@@ -62,5 +63,17 @@ export class LearningController {
   @ApiResponse({ status: 200, description: 'Single learning item details' })
   findOne(@Param('id') id: string) {
     return this.learningService.findOne(id);
+  }
+
+  @Post(':id/progress')
+  @ApiOperation({ summary: 'Record client progress on a learning item' })
+  @ApiBody({ type: RecordProgressDto })
+  @ApiResponse({ status: 200, description: 'Progress recorded/updated successfully' })
+  recordProgress(
+    @Param('id') contentId: string,
+    @Body() dto: RecordProgressDto,
+    @Req() req: any,
+  ) {
+    return this.learningService.recordProgress(req.user.id, dto);
   }
 }
