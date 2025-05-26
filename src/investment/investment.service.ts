@@ -2,28 +2,51 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { UpdateInvestmentDto } from './dto/update-investment.dto';
+import { BulkCreateInvestmentDto } from './dto/bulk-create-investment.dto';
 
 @Injectable()
 export class InvestmentService {
   constructor(private prisma: PrismaService) {}
 
-  create(data: CreateInvestmentDto) {
+  async create(data: CreateInvestmentDto) {
     return this.prisma.investment.create({ data });
   }
 
-  findAllByClient(clientId: string) {
-    return this.prisma.investment.findMany({ where: { clientId } });
+  async bulkCreate(dto: BulkCreateInvestmentDto) {
+    const investments = dto.investments ?? [];
+    const createPromises = investments.map((investment) =>
+      this.prisma.investment.create({ data: investment }),
+    );
+    return Promise.all(createPromises);
   }
 
-  findOne(id: string) {
+  async findAllByClient(clientId: string, status?: string) {
+    return this.prisma.investment.findMany({
+      where: {
+        clientId,
+        status: status || undefined,
+      },
+    });
+  }
+
+  async findOne(id: string) {
     return this.prisma.investment.findUnique({ where: { id } });
   }
 
-  update(id: string, data: UpdateInvestmentDto) {
+  async update(id: string, data: UpdateInvestmentDto) {
     return this.prisma.investment.update({ where: { id }, data });
   }
 
-  remove(id: string) {
+  async remove(id: string) {
     return this.prisma.investment.delete({ where: { id } });
+  }
+
+  async findByClientAndTypes(clientId: string, types: string[]) {
+    return this.prisma.investment.findMany({
+      where: {
+        clientId,
+        type: { in: types },
+      },
+    });
   }
 }

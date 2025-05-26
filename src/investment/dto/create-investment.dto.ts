@@ -1,16 +1,11 @@
-import {
-  IsString,
-  IsNumber,
-  IsOptional,
-  IsDateString,
-} from 'class-validator';
+import { IsString, IsNumber, IsDateString, IsOptional } from 'class-validator';
 
 export class CreateInvestmentDto {
   @IsString()
   clientId!: string;
 
   @IsString()
-  type!: string;
+  type!: string;  // e.g., "Small Cap", "Gold", "Stocks"
 
   @IsNumber()
   amount!: number;
@@ -19,7 +14,7 @@ export class CreateInvestmentDto {
   startDate!: string;
 
   @IsString()
-  status!: string; // "active", "matured", etc.
+  status!: string;  // e.g., "active", "matured", "withdrawn"
 
   @IsOptional()
   @IsNumber()
@@ -27,5 +22,5 @@ export class CreateInvestmentDto {
 
   @IsOptional()
   @IsString()
-  source?: string;
+  source?: string; // e.g., "PartnerAPI", "Manual"
 }
