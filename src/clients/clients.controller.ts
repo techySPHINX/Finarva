@@ -8,6 +8,7 @@ import {
   Delete,
   Req,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -75,11 +76,26 @@ export class ClientsController {
   }
 
   @Get(':id/insights')
-  @ApiOperation({ summary: 'Get AI-generated insights for a client' })
-  @ApiParam({ name: 'id', description: 'Client ID' })
-  @ApiResponse({ status: 200, description: 'AI insights generated successfully' })
-  async getClientAiInsights(@Param('id') id: string) {
-    const profile = await this.clientsService.getClientProfile(id);
-    return this.aiService.analyzeProfile(profile);
+@ApiOperation({ summary: 'Get AI-generated insights for a client' })
+@ApiParam({ name: 'id', description: 'Client ID' })
+@ApiResponse({ status: 200, description: 'AI insights generated successfully' })
+async getClientAiInsights(@Param('id') id: string) {
+  const client = await this.clientsService.findOne(id);
+
+  if (!client) {
+    throw new NotFoundException('Client not found');
   }
+
+  const profile = {
+    id: client.id,
+    name: client.name,
+    phone: client.phone,
+    agentId: client.agentId,
+    language: client.preferredLanguage ?? 'en',
+    goals: client.goals ?? [],
+  };
+
+  return this.aiService.analyzeProfile(profile);
+}
+
 }

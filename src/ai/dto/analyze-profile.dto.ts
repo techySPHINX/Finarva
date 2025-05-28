@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsInt, IsArray, IsNumber } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {  ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AnalyzeProfileDto {
   @ApiPropertyOptional({ description: 'Age of the client' })

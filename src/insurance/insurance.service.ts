@@ -4,6 +4,8 @@ import { CreateInsuranceDto } from './dto/create-insurance.dto';
 import { UpdateInsuranceDto } from './dto/update-insurance.dto';
 import { AiService } from '../ai/ai.service';
 import { AiInsuranceInputDto } from './dto/ai-insurance-input.dto';
+import { ClientProfileDto } from '../clients/dto/client-profile.dto';
+import { AnalyzeProfileDto } from '../ai/dto/analyze-profile.dto';
 
 @Injectable()
 export class InsuranceService {
@@ -12,11 +14,21 @@ export class InsuranceService {
     private readonly aiService: AiService,
   ) {}
 
+  private mapAnalyzeToClientProfile(analyze: AnalyzeProfileDto): ClientProfileDto {
+    return {
+      id: 'unknown-id',
+      name: 'unknown-name',
+      phone: 'unknown-phone',
+      agentId: 'unknown-agent',
+      language: analyze.language || 'unknown-language',
+      goals: analyze.goals || [],
+    };
+  }
+
   create(data: CreateInsuranceDto): Promise<any> {
-    // Ensure 'status' is always a string
     const insuranceData = {
       ...data,
-      status: data.status ?? 'pending', 
+      status: data.status ?? 'pending',
     };
     return this.prisma.insurance.create({ data: insuranceData });
   }
@@ -42,6 +54,10 @@ export class InsuranceService {
   }
 
   async suggestInsurance(dto: AiInsuranceInputDto): Promise<string> {
-    return this.aiService.suggestInsurance(dto.clientProfile);
+  if (!dto.clientProfile) {
+    throw new Error('clientProfile is required');
   }
+  const clientProfile = this.mapAnalyzeToClientProfile(dto.clientProfile);
+  return this.aiService.suggestInsurance(clientProfile);
+}
 }

@@ -1,18 +1,15 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import axios from 'axios';
-import { ClientProfileDto } from '../clients/dto/client-profile.dto';
+import { ClientProfileDto } from '../clients/dto/client-profile.dto'; // assuming this is the correct path
 
 @Injectable()
 export class AiService {
-  analyzeProfile(profile: ClientProfileDto) {
-   throw new Error('Method not implemented.');
-  }
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || '';
-    this.baseUrl = 'https://api.gemini.ai/v1'; 
+    this.baseUrl = 'https://api.gemini.ai/v1';
 
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY not set');
@@ -29,14 +26,18 @@ export class AiService {
       });
       return response.data;
     } catch (error) {
+      const err = error as any;
       throw new HttpException(
-        `Gemini API error: ${error.response?.data?.message || error.message}`,
+        `Gemini API error: ${err.response?.data?.message || err.message}`,
         HttpStatus.BAD_GATEWAY,
       );
     }
   }
 
-  async generateQuizSuggestions(clientProfile: any): Promise<string[]> {
+  /**
+   * Generate 3 quiz questions relevant to a microentrepreneur client profile.
+   */
+  async generateQuizSuggestions(clientProfile: ClientProfileDto): Promise<string[]> {
     const prompt = `You are an AI assistant. Generate 3 relevant quiz questions (without answers/options) for a microentrepreneur client with profile:\n${JSON.stringify(
       clientProfile,
     )}`;
@@ -53,13 +54,16 @@ export class AiService {
     // Split questions by new lines, filtering empty lines
     const questions = rawText
       .split('\n')
-      .map((q) => q.trim())
-      .filter((q) => q.length > 0);
+      .map((q: string) => q.trim())
+      .filter((q: string | any[]) => q.length > 0);
 
     return questions;
   }
 
-  async analyzeLearningContent(profile: any, learningStats: any): Promise<string> {
+  /**
+   * Analyze learning content engagement and suggest new content.
+   */
+  async analyzeLearningContent(profile: ClientProfileDto, learningStats: any): Promise<string> {
     const prompt = `Analyze the learning content engagement for the client profile:\n${JSON.stringify(
       profile,
     )}\nGiven the learning content stats:\n${JSON.stringify(
@@ -76,7 +80,10 @@ export class AiService {
     return result.choices?.[0]?.message?.content || 'No analysis available.';
   }
 
-  async suggestInvestments(clientProfile: any): Promise<string> {
+  /**
+   * Suggest personalized investment strategies.
+   */
+  async suggestInvestments(clientProfile: ClientProfileDto): Promise<string> {
     const prompt = `Based on the client profile:\n${JSON.stringify(
       clientProfile,
     )}\nSuggest personalized investment strategies considering goals, income, and risk tolerance.`;
@@ -91,19 +98,35 @@ export class AiService {
     return result.choices?.[0]?.message?.content || 'No investment suggestions available.';
   }
 
-  async suggestInsurance(clientProfile: any): Promise<string> {
-  const prompt = `Based on the client profile below, suggest suitable insurance plans with justifications:\n${JSON.stringify(
-    clientProfile,
-  )}\nPlease consider age, occupation, income, dependents, existing insurance, and health status.`;
+  /**
+   * Suggest suitable insurance plans.
+   */
+  async suggestInsurance(clientProfile: ClientProfileDto): Promise<string> {
+    const prompt = `Based on the client profile below, suggest suitable insurance plans with justifications:\n${JSON.stringify(
+      clientProfile,
+    )}\nPlease consider age, occupation, income, dependents, existing insurance, and health status.`;
 
-  const payload = {
-    model: 'gemini-1',
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 300,
+    const payload = {
+      model: 'gemini-1',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 300,
+    };
+
+    const result = await this.callGeminiApi(payload);
+    return result.choices?.[0]?.message?.content || 'No insurance suggestions available.';
+  }
+
+  async analyzeProfile(clientProfile: ClientProfileDto): Promise<any> {
+  const [quizSuggestions, investmentAdvice, insuranceAdvice] = await Promise.all([
+    this.generateQuizSuggestions(clientProfile),
+    this.suggestInvestments(clientProfile),
+    this.suggestInsurance(clientProfile),
+  ]);
+
+  return {
+    quizSuggestions,
+    investmentAdvice,
+    insuranceAdvice,
   };
-
-  const result = await this.callGeminiApi(payload);
-  return result.choices?.[0]?.message?.content || 'No insurance suggestions available.';
 }
-
 }
