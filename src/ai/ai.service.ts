@@ -15,7 +15,7 @@ export class AiService {
     this.baseUrl = 'https://api.gemini.ai/v1'; 
 
     if (!this.apiKey) {
-      throw new Error('GEMINI_API_KEY not set in environment variables');
+      throw new Error('GEMINI_API_KEY not set');
     }
   }
 
@@ -90,4 +90,20 @@ export class AiService {
     const result = await this.callGeminiApi(payload);
     return result.choices?.[0]?.message?.content || 'No investment suggestions available.';
   }
+
+  async suggestInsurance(clientProfile: any): Promise<string> {
+  const prompt = `Based on the client profile below, suggest suitable insurance plans with justifications:\n${JSON.stringify(
+    clientProfile,
+  )}\nPlease consider age, occupation, income, dependents, existing insurance, and health status.`;
+
+  const payload = {
+    model: 'gemini-1',
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 300,
+  };
+
+  const result = await this.callGeminiApi(payload);
+  return result.choices?.[0]?.message?.content || 'No insurance suggestions available.';
+}
+
 }

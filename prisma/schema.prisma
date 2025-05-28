@@ -42,6 +42,8 @@ model Client {
   quizAttempts          ClientQuizAttempt[]
   learningProgress      LearningProgress[]
   aiRecommendations     AIRecommendation[]
+
+  Insurance Insurance[]
 }
 
 
@@ -53,11 +55,42 @@ model Investment {
   amount        Float
   startDate     DateTime
   status        String   // E.g., "active", "matured", "withdrawn"
-  returns       Float?   // Optional: calculated or reported
+  returns       Float?  
   source        String?  // Optional: e.g., "PartnerAPI", "Manual"
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model Insurance {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId       String   @db.ObjectId
+  client         Client   @relation(fields: [clientId], references: [id])
+  type           String   // e.g., "life", "health", "crop", "vehicle"
+  amount         Float
+  premium        Float
+  termMonths     Int
+  provider       String?  // Optional: e.g., "LIC", "ICICI Lombard"
+  status         String   // "active", "expired", "cancelled", etc.
+  startDate      DateTime
+  endDate        DateTime
+  source         String?  // "PartnerAPI", "Manual", etc.
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  claims         InsuranceClaim[]
+}
+
+model InsuranceClaim {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  insuranceId   String   @db.ObjectId
+  insurance     Insurance @relation(fields: [insuranceId], references: [id])
+  claimAmount   Float
+  claimDate     DateTime
+  reason        String?
+  status        String    // "pending", "approved", "rejected"
+  createdAt     DateTime  @default(now())
+}
+
 
 model LearningContent {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId

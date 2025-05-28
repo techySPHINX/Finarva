@@ -14,7 +14,14 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AiService } from '../ai/ai.service';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Clients')
 @ApiBearerAuth()
@@ -36,31 +43,41 @@ export class ClientsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all clients for agent' })
+  @ApiOperation({ summary: 'Get all clients for authenticated agent' })
+  @ApiResponse({ status: 200, description: 'List of clients for the agent' })
   async findAll(@Req() req: any) {
     return this.clientsService.findAllByAgent(req.user.id);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a client by ID' })
+  @ApiParam({ name: 'id', description: 'Client ID' })
+  @ApiResponse({ status: 200, description: 'Client details' })
   async findOne(@Param('id') id: string) {
     return this.clientsService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a client' })
+  @ApiOperation({ summary: 'Update a client by ID' })
+  @ApiParam({ name: 'id', description: 'Client ID' })
+  @ApiBody({ type: UpdateClientDto })
+  @ApiResponse({ status: 200, description: 'Client updated successfully' })
   async update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
     return this.clientsService.update(id, dto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a client' })
+  @ApiOperation({ summary: 'Delete a client by ID' })
+  @ApiParam({ name: 'id', description: 'Client ID' })
+  @ApiResponse({ status: 200, description: 'Client deleted successfully' })
   async remove(@Param('id') id: string) {
     return this.clientsService.remove(id);
   }
 
   @Get(':id/insights')
-  @ApiOperation({ summary: 'Get AI insights for a client' })
+  @ApiOperation({ summary: 'Get AI-generated insights for a client' })
+  @ApiParam({ name: 'id', description: 'Client ID' })
+  @ApiResponse({ status: 200, description: 'AI insights generated successfully' })
   async getClientAiInsights(@Param('id') id: string) {
     const profile = await this.clientsService.getClientProfile(id);
     return this.aiService.analyzeProfile(profile);
