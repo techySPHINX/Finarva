@@ -25,7 +25,7 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('Clients')
-@ApiBearerAuth()
+@ApiBearerAuth('access-token') 
 @Controller('clients')
 @UseGuards(JwtAuthGuard)
 export class ClientsController {
