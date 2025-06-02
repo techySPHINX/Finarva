@@ -1,38 +1,36 @@
-import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import js from '@eslint/js';
 import globals from 'globals';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import typescriptEslintPlugin from '@typescript-eslint/eslint-plugin';
+import parser from '@typescript-eslint/parser';
+import prettierPlugin from 'eslint-plugin-prettier';
 
-// Fix for import.meta.dirname
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-export default tseslint.config(
+export default [
   {
     ignores: ['eslint.config.mjs'],
   },
-
-  eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
-
   {
     languageOptions: {
-      globals: {
-        ...globals.node,
-        ...globals.jest,
-      },
       ecmaVersion: 'latest',
       sourceType: 'module',
+      parser,
       parserOptions: {
         project: './tsconfig.eslint.json',
         tsconfigRootDir: __dirname,
       },
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+      },
     },
-  },
-
-  {
+    plugins: {
+      '@typescript-eslint': typescriptEslintPlugin,
+      prettier: prettierPlugin,
+    },
     rules: {
       'linebreak-style': ['error', 'unix'],
       '@typescript-eslint/no-explicit-any': 'warn',
@@ -42,6 +40,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      'prettier/prettier': 'error',
     },
   },
-);
+];
