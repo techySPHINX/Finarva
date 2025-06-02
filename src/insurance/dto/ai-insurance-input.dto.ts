@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsOptional, IsArray, IsNotEmpty, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsNotEmpty,
+  IsObject,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AiInsuranceInputDto {
@@ -16,27 +23,45 @@ export class AiInsuranceInputDto {
   @IsOptional()
   gender?: string;
 
-  @ApiPropertyOptional({ description: 'Monthly income of the client', type: Number })
+  @ApiPropertyOptional({
+    description: 'Monthly income of the client',
+    type: Number,
+  })
   @IsNumber()
   @IsOptional()
   monthlyIncome?: number;
 
-  @ApiPropertyOptional({ description: 'Existing insurance types', type: [String], example: ['life', 'health'] })
+  @ApiPropertyOptional({
+    description: 'Existing insurance types',
+    type: [String],
+    example: ['life', 'health'],
+  })
   @IsArray()
   @IsOptional()
   existingInsuranceTypes?: string[];
 
-  @ApiPropertyOptional({ description: 'Insurance goals', type: [String], example: ['family protection', 'hospitalization'] })
+  @ApiPropertyOptional({
+    description: 'Insurance goals',
+    type: [String],
+    example: ['family protection', 'hospitalization'],
+  })
   @IsArray()
   @IsOptional()
   goals?: string[];
 
-  @ApiPropertyOptional({ description: 'Dependents of the client', type: [String], example: ['spouse', '2 children'] })
+  @ApiPropertyOptional({
+    description: 'Dependents of the client',
+    type: [String],
+    example: ['spouse', '2 children'],
+  })
   @IsArray()
   @IsOptional()
   dependents?: string[];
 
-  @ApiPropertyOptional({ description: 'Location of the client', example: 'urban' })
+  @ApiPropertyOptional({
+    description: 'Location of the client',
+    example: 'urban',
+  })
   @IsString()
   @IsOptional()
   location?: string;
@@ -46,17 +71,22 @@ export class AiInsuranceInputDto {
   @IsOptional()
   occupation?: string;
 
-  @ApiPropertyOptional({ description: 'Health status of the client', example: 'diabetic' })
+  @ApiPropertyOptional({
+    description: 'Health status of the client',
+    example: 'diabetic',
+  })
   @IsString()
   @IsOptional()
   healthStatus?: string;
 
-  @ApiPropertyOptional({ description: 'Preferred language for recommendations' })
+  @ApiPropertyOptional({
+    description: 'Preferred language for recommendations',
+  })
   @IsString()
   @IsOptional()
   language?: string;
 
-    @ApiProperty({
+  @ApiProperty({
     description: 'Profile of the client for suggesting insurance',
     type: Object,
     example: {
@@ -70,9 +100,5 @@ export class AiInsuranceInputDto {
   })
   @IsNotEmpty()
   @IsObject()
-  clientProfile: Record<string, any> | undefined; 
-
+  clientProfile: Record<string, never> | undefined;
 }
-
-
-

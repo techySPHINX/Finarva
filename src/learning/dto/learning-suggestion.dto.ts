@@ -1,32 +1,43 @@
-import { IsArray, IsString, IsOptional, IsObject, ValidateNested, IsNumber, IsDate } from "class-validator";
-import { ApiPropertyOptional } from "@nestjs/swagger";
-import { Type as TransformType } from "class-transformer";
+import {
+  IsArray,
+  IsString,
+  IsOptional,
+  IsObject,
+  ValidateNested,
+  IsNumber,
+  IsDate,
+} from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type as TransformType } from 'class-transformer';
 
 class LearningHistoryItem {
-  @ApiPropertyOptional({ description: "Content ID", example: "abc123" })
+  @ApiPropertyOptional({ description: 'Content ID', example: 'abc123' })
   @IsString()
   contentId!: string;
 
-  @ApiPropertyOptional({ description: "Completion percentage", example: 100 })
+  @ApiPropertyOptional({ description: 'Completion percentage', example: 100 })
   @IsNumber()
   completion!: number;
 
-  @ApiPropertyOptional({ description: "Viewed at timestamp", example: "2024-06-01T12:00:00Z" })
+  @ApiPropertyOptional({
+    description: 'Viewed at timestamp',
+    example: '2024-06-01T12:00:00Z',
+  })
   @IsDate()
   @TransformType(() => Date)
   viewedAt!: Date;
 }
 
 export class LearningSuggestionDto {
-  @ApiPropertyOptional({ description: "Preferred language", example: "en" })
+  @ApiPropertyOptional({ description: 'Preferred language', example: 'en' })
   @IsOptional()
   @IsString()
   language?: string;
 
   @ApiPropertyOptional({
-    description: "User interests",
+    description: 'User interests',
     type: [String],
-    example: ["finance", "technology"]
+    example: ['finance', 'technology'],
   })
   @IsOptional()
   @IsArray()
@@ -34,15 +45,15 @@ export class LearningSuggestionDto {
   interests?: string[];
 
   @ApiPropertyOptional({
-    description: "User profile information",
-    type: "object",
+    description: 'User profile information',
+    type: 'object',
     additionalProperties: true,
     example: {
-      name: "John Doe",
+      name: 'John Doe',
       age: 30,
-      occupation: "Engineer",
-      investmentExperience: "Intermediate"
-    }
+      occupation: 'Engineer',
+      investmentExperience: 'Intermediate',
+    },
   })
   @IsOptional()
   @IsObject()
@@ -54,15 +65,15 @@ export class LearningSuggestionDto {
   };
 
   @ApiPropertyOptional({
-    description: "Learning history",
+    description: 'Learning history',
     type: [LearningHistoryItem],
     example: [
       {
-        contentId: "abc123",
+        contentId: 'abc123',
         completion: 100,
-        viewedAt: "2024-06-01T12:00:00Z"
-      }
-    ]
+        viewedAt: '2024-06-01T12:00:00Z',
+      },
+    ],
   })
   @IsOptional()
   @IsArray()

@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsNumber, IsDateString, IsOptional } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsDateString,
+  IsOptional,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateInsuranceDto {
@@ -33,12 +39,20 @@ export class CreateInsuranceDto {
   @IsOptional()
   source?: string;
 
-  @ApiProperty({ description: 'Start date of insurance', type: String, format: 'date-time' })
+  @ApiProperty({
+    description: 'Start date of insurance',
+    type: String,
+    format: 'date-time',
+  })
   @IsDateString()
   @IsNotEmpty()
   startDate!: string;
 
-  @ApiProperty({ description: 'End date of insurance', type: String, format: 'date-time' })
+  @ApiProperty({
+    description: 'End date of insurance',
+    type: String,
+    format: 'date-time',
+  })
   @IsDateString()
   @IsNotEmpty()
   endDate!: string;
@@ -46,5 +60,5 @@ export class CreateInsuranceDto {
   @ApiProperty({ description: 'Status of insurance' })
   @IsString()
   @IsNotEmpty()
-  status!: string; 
+  status!: string;
 }

@@ -7,7 +7,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('FinTrack Edge API')
-    .setDescription('API documentation for FinTrack Edge - Microservices Architecture')
+    .setDescription(
+      'API documentation for FinTrack Edge - Microservices Architecture',
+    )
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -17,13 +19,13 @@ async function bootstrap() {
         name: 'Authorization',
         in: 'header',
       },
-      'access-token', 
+      'access-token',
     )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document); 
+  SwaggerModule.setup('api', app, document);
 
   await app.listen(3000);
 }
-bootstrap();
+void bootstrap();

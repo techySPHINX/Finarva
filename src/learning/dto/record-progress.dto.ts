@@ -10,12 +10,25 @@ export class RecordProgressDto {
   @IsString()
   contentId!: string;
 
-  @ApiProperty({ description: 'Completion percentage', minimum: 0, maximum: 100, example: 75 })
+  @ApiProperty({
+    description: 'Completion percentage',
+    minimum: 0,
+    maximum: 100,
+    example: 75,
+  })
   @IsNumber()
   @Min(0)
   @Max(100)
   completion!: number;
 
-  @ApiProperty({ description: 'Additional progress data', example: { step: 2, status: 'in-progress' }, required: false })
-  progress: any;
+  @ApiProperty({
+    description: 'Additional progress data',
+    example: { step: 2, status: 'in-progress' },
+    required: false,
+  })
+  progress?: {
+    step: number;
+    status: string;
+    [key: string]: unknown;
+  };
 }

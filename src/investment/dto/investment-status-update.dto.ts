@@ -6,11 +6,16 @@ export class InvestmentStatusDto {
   @IsString()
   investmentId!: string;
 
-  @ApiProperty({ description: 'New status of the investment (e.g., active, matured, withdrawn)' })
+  @ApiProperty({
+    description:
+      'New status of the investment (e.g., active, matured, withdrawn)',
+  })
   @IsString()
   status!: string;
 
-  @ApiPropertyOptional({ description: 'Optional remarks or comments about the status change' })
+  @ApiPropertyOptional({
+    description: 'Optional remarks or comments about the status change',
+  })
   @IsOptional()
   @IsString()
   remarks?: string;

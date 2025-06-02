@@ -6,6 +6,7 @@ import { AiService } from '../ai/ai.service';
 import { AiInsuranceInputDto } from './dto/ai-insurance-input.dto';
 import { ClientProfileDto } from '../clients/dto/client-profile.dto';
 import { AnalyzeProfileDto } from '../ai/dto/analyze-profile.dto';
+import { Insurance, Client } from '@prisma/client';
 
 @Injectable()
 export class InsuranceService {
@@ -14,7 +15,9 @@ export class InsuranceService {
     private readonly aiService: AiService,
   ) {}
 
-  private mapAnalyzeToClientProfile(analyze: AnalyzeProfileDto): ClientProfileDto {
+  private mapAnalyzeToClientProfile(
+    analyze: AnalyzeProfileDto,
+  ): ClientProfileDto {
     return {
       id: 'unknown-id',
       name: 'unknown-name',
@@ -25,7 +28,7 @@ export class InsuranceService {
     };
   }
 
-  create(data: CreateInsuranceDto): Promise<any> {
+  create(data: CreateInsuranceDto): Promise<Insurance> {
     const insuranceData = {
       ...data,
       status: data.status ?? 'pending',
@@ -33,31 +36,31 @@ export class InsuranceService {
     return this.prisma.insurance.create({ data: insuranceData });
   }
 
-  findAll(): Promise<any[]> {
+  findAll(): Promise<(Insurance & { client: Client })[]> {
     return this.prisma.insurance.findMany({ include: { client: true } });
   }
 
-  findAllByClient(clientId: string): Promise<any[]> {
+  findAllByClient(clientId: string): Promise<Insurance[]> {
     return this.prisma.insurance.findMany({ where: { clientId } });
   }
 
-  findOne(id: string): Promise<any | null> {
+  findOne(id: string): Promise<Insurance | null> {
     return this.prisma.insurance.findUnique({ where: { id } });
   }
 
-  update(id: string, data: UpdateInsuranceDto): Promise<any> {
+  update(id: string, data: UpdateInsuranceDto): Promise<Insurance> {
     return this.prisma.insurance.update({ where: { id }, data });
   }
 
-  remove(id: string): Promise<any> {
+  remove(id: string): Promise<Insurance> {
     return this.prisma.insurance.delete({ where: { id } });
   }
 
   async suggestInsurance(dto: AiInsuranceInputDto): Promise<string> {
-  if (!dto.clientProfile) {
-    throw new Error('clientProfile is required');
+    if (!dto.clientProfile) {
+      throw new Error('clientProfile is required');
+    }
+    const clientProfile = this.mapAnalyzeToClientProfile(dto.clientProfile);
+    return this.aiService.suggestInsurance(clientProfile);
   }
-  const clientProfile = this.mapAnalyzeToClientProfile(dto.clientProfile);
-  return this.aiService.suggestInsurance(clientProfile);
-}
 }

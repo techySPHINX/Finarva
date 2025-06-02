@@ -11,12 +11,17 @@ export class AiInvestmentInputDto {
   @IsArray()
   investmentTypes?: string[];
 
-  @ApiPropertyOptional({ description: 'Total investment amount', example: 10000 })
+  @ApiPropertyOptional({
+    description: 'Total investment amount',
+    example: 10000,
+  })
   @IsOptional()
   @IsNumber()
   totalInvestmentAmount?: number;
 
-  @ApiPropertyOptional({ description: 'Risk profile (e.g., Conservative, Moderate, Aggressive)' })
+  @ApiPropertyOptional({
+    description: 'Risk profile (e.g., Conservative, Moderate, Aggressive)',
+  })
   @IsOptional()
   @IsString()
   riskProfile?: string;

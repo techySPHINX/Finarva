@@ -1,5 +1,3 @@
-// src/insurance/insurance.module.ts
-
 import { Module } from '@nestjs/common';
 import { InsuranceService } from './insurance.service';
 import { InsuranceController } from './insurance.controller';

@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsDateString, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsDateString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -7,7 +14,9 @@ class CreateInvestmentItemDto {
   @IsString()
   clientId!: string;
 
-  @ApiProperty({ description: 'Investment type, e.g., "Small Cap", "Gold", etc.' })
+  @ApiProperty({
+    description: 'Investment type, e.g., "Small Cap", "Gold", etc.',
+  })
   @IsString()
   type!: string;
 
@@ -15,11 +24,17 @@ class CreateInvestmentItemDto {
   @IsNumber()
   amount!: number;
 
-  @ApiProperty({ description: 'Investment start date', type: String, format: 'date-time' })
+  @ApiProperty({
+    description: 'Investment start date',
+    type: String,
+    format: 'date-time',
+  })
   @IsDateString()
   startDate!: string;
 
-  @ApiProperty({ description: 'Investment status, e.g., "active", "matured", "withdrawn"' })
+  @ApiProperty({
+    description: 'Investment status, e.g., "active", "matured", "withdrawn"',
+  })
   @IsString()
   status!: string;
 
@@ -28,7 +43,9 @@ class CreateInvestmentItemDto {
   @IsNumber()
   returns?: number;
 
-  @ApiPropertyOptional({ description: 'Source of investment, e.g., "PartnerAPI", "Manual"' })
+  @ApiPropertyOptional({
+    description: 'Source of investment, e.g., "PartnerAPI", "Manual"',
+  })
   @IsOptional()
   @IsString()
   source?: string;
@@ -37,7 +54,7 @@ class CreateInvestmentItemDto {
 export class BulkCreateInvestmentDto {
   @ApiProperty({
     type: [CreateInvestmentItemDto],
-    description: 'Array of investments to create'
+    description: 'Array of investments to create',
   })
   @IsArray()
   @ValidateNested({ each: true })

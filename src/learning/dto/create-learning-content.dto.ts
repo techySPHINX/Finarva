@@ -22,7 +22,10 @@ export class CreateLearningContentDto {
   @IsString()
   language!: string;
 
-  @ApiProperty({ example: ['typescript', 'beginner', 'programming'], type: [String] })
+  @ApiProperty({
+    example: ['typescript', 'beginner', 'programming'],
+    type: [String],
+  })
   @IsArray()
   @IsString({ each: true })
   tags!: string[];

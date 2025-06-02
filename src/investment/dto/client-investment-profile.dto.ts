@@ -6,7 +6,10 @@ export class ClientInvestmentProfileDto {
   @IsString()
   clientId!: string;
 
-  @ApiProperty({ description: 'Total investment amount of the client', example: 100000 })
+  @ApiProperty({
+    description: 'Total investment amount of the client',
+    example: 100000,
+  })
   @IsNumber()
   totalInvestmentAmount!: number;
 

@@ -17,7 +17,11 @@ export class CreateQuizDto {
   @IsNotEmpty()
   language!: string;
 
-  @ApiProperty({ description: 'Tags associated with the quiz', type: [String], required: false })
+  @ApiProperty({
+    description: 'Tags associated with the quiz',
+    type: [String],
+    required: false,
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

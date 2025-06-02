@@ -1,13 +1,4 @@
-// src/insurance/insurance.controller.ts
-
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import { InsuranceService } from './insurance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateInsuranceDto } from './dto/create-insurance.dto';

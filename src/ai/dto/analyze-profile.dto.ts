@@ -1,5 +1,11 @@
-import { IsOptional, IsString, IsInt, IsArray, IsNumber } from 'class-validator';
-import {  ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsOptional,
+  IsString,
+  IsInt,
+  IsArray,
+  IsNumber,
+} from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AnalyzeProfileDto {
   @ApiPropertyOptional({ description: 'Age of the client' })
@@ -12,7 +18,9 @@ export class AnalyzeProfileDto {
   @IsNumber()
   income?: number;
 
-  @ApiPropertyOptional({ description: 'Primary language code (e.g. en, hi, ta)' })
+  @ApiPropertyOptional({
+    description: 'Primary language code (e.g. en, hi, ta)',
+  })
   @IsOptional()
   @IsString()
   language?: string;

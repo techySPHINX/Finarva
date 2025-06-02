@@ -25,7 +25,7 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('Clients')
-@ApiBearerAuth('access-token') 
+@ApiBearerAuth('access-token')
 @Controller('clients')
 @UseGuards(JwtAuthGuard)
 export class ClientsController {
@@ -38,7 +38,10 @@ export class ClientsController {
   @ApiOperation({ summary: 'Create a new client' })
   @ApiBody({ type: CreateClientDto })
   @ApiResponse({ status: 201, description: 'Client created successfully' })
-  async create(@Body() dto: CreateClientDto, @Req() req: any) {
+  async create(
+    @Body() dto: CreateClientDto,
+    @Req() req: { user: { id: string } },
+  ) {
     const agentId = req.user.id;
     return this.clientsService.create(dto, agentId);
   }
@@ -46,7 +49,7 @@ export class ClientsController {
   @Get()
   @ApiOperation({ summary: 'Get all clients for authenticated agent' })
   @ApiResponse({ status: 200, description: 'List of clients for the agent' })
-  async findAll(@Req() req: any) {
+  async findAll(@Req() req: { user: { id: string } }) {
     return this.clientsService.findAllByAgent(req.user.id);
   }
 
@@ -76,26 +79,28 @@ export class ClientsController {
   }
 
   @Get(':id/insights')
-@ApiOperation({ summary: 'Get AI-generated insights for a client' })
-@ApiParam({ name: 'id', description: 'Client ID' })
-@ApiResponse({ status: 200, description: 'AI insights generated successfully' })
-async getClientAiInsights(@Param('id') id: string) {
-  const client = await this.clientsService.findOne(id);
+  @ApiOperation({ summary: 'Get AI-generated insights for a client' })
+  @ApiParam({ name: 'id', description: 'Client ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'AI insights generated successfully',
+  })
+  async getClientAiInsights(@Param('id') id: string) {
+    const client = await this.clientsService.findOne(id);
 
-  if (!client) {
-    throw new NotFoundException('Client not found');
+    if (!client) {
+      throw new NotFoundException('Client not found');
+    }
+
+    const profile = {
+      id: client.id,
+      name: client.name,
+      phone: client.phone,
+      agentId: client.agentId,
+      language: client.preferredLanguage ?? 'en',
+      goals: client.goals ?? [],
+    };
+
+    return this.aiService.analyzeProfile(profile);
   }
-
-  const profile = {
-    id: client.id,
-    name: client.name,
-    phone: client.phone,
-    agentId: client.agentId,
-    language: client.preferredLanguage ?? 'en',
-    goals: client.goals ?? [],
-  };
-
-  return this.aiService.analyzeProfile(profile);
-}
-
 }

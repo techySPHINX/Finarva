@@ -18,7 +18,9 @@ import { InvestmentSuggestionDto } from './dto/investment-suggestion.dto';
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
-  private mapAnalyzeToClientProfile(analyze: AnalyzeProfileDto): ClientProfileDto {
+  private mapAnalyzeToClientProfile(
+    analyze: AnalyzeProfileDto,
+  ): ClientProfileDto {
     return {
       id: 'unknown-id',
       name: 'unknown-name',
@@ -44,7 +46,10 @@ export class AiController {
     @Body() dto: ContentInsightDto,
   ): Promise<string> {
     const clientProfile = this.mapAnalyzeToClientProfile(dto.clientProfile);
-    return this.aiService.analyzeLearningContent(clientProfile, dto.learningData);
+    return this.aiService.analyzeLearningContent(
+      clientProfile,
+      dto.learningData,
+    );
   }
 
   @Post('investment-suggestions')
@@ -60,9 +65,7 @@ export class AiController {
 
   @Post('insurance-suggestions')
   @ApiOperation({ summary: 'Suggest insurance plans based on client profile' })
-  async suggestInsurance(
-    @Body() dto: InsuranceSuggestionDto,
-  ): Promise<string> {
+  async suggestInsurance(@Body() dto: InsuranceSuggestionDto): Promise<string> {
     const clientProfile = this.mapAnalyzeToClientProfile(dto.clientProfile);
     return this.aiService.suggestInsurance(clientProfile);
   }

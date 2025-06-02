@@ -188,11 +188,11 @@ export class QuizService {
       goals: client.goals ?? [],
     };
 
-    const quizHistory = client.quizAttempts.map((attempt) => ({
-      quizId: attempt.quizId,
-      score: attempt.score,
-      completedAt: attempt.createdAt.toISOString(),
-    }));
+    // const quizHistory = client.quizAttempts.map((attempt) => ({
+    //   quizId: attempt.quizId,
+    //   score: attempt.score,
+    //   completedAt: attempt.createdAt.toISOString(),
+    // }));
 
     return this.aiService.generateQuizSuggestions(profile);
   }

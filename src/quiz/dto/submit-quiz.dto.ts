@@ -7,7 +7,10 @@ export class SubmitQuizDto {
   @IsNotEmpty()
   quizId!: string;
 
-  @ApiProperty({ description: 'Array of answers submitted by the user', type: [String] })
+  @ApiProperty({
+    description: 'Array of answers submitted by the user',
+    type: [String],
+  })
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty({ each: true })

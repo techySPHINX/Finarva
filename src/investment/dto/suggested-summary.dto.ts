@@ -6,7 +6,9 @@ export class SuggestSummaryDto {
   @IsString()
   clientId!: string;
 
-  @ApiProperty({ description: 'Type of suggestion (e.g., quiz, learning, investment)' })
+  @ApiProperty({
+    description: 'Type of suggestion (e.g., quiz, learning, investment)',
+  })
   @IsString()
   type!: string;
 
@@ -14,19 +16,20 @@ export class SuggestSummaryDto {
   @IsString()
   suggestion!: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Optional metadata associated with the suggestion',
     type: 'object',
     additionalProperties: true,
-    example: { source: 'AI Engine', topic: 'Mutual Funds' }
+    example: { source: 'AI Engine', topic: 'Mutual Funds' },
   })
   @IsOptional()
   @IsObject()
-  metadata?: Record<string, any>;
+  metadata?: Record<string, never>;
 
-  @ApiPropertyOptional({ 
-    description: 'Optional confidence score (0 to 1) indicating suggestion reliability',
-    example: 0.85 
+  @ApiPropertyOptional({
+    description:
+      'Optional confidence score (0 to 1) indicating suggestion reliability',
+    example: 0.85,
   })
   @IsOptional()
   @IsNumber()

@@ -26,13 +26,13 @@
 
 ## 🏗️ Tech Stack
 
-| Layer         | Technology                                                   |
-|---------------|---------------------------------------------------------------|
-| Backend       | [NestJS](https://nestjs.com/)                                 |
-| Database      | [MongoDB](https://www.mongodb.com/) + [Prisma](https://www.prisma.io/) |
+| Layer         | Technology                                                                          |
+| ------------- | ----------------------------------------------------------------------------------- |
+| Backend       | [NestJS](https://nestjs.com/)                                                       |
+| Database      | [MongoDB](https://www.mongodb.com/) + [Prisma](https://www.prisma.io/)              |
 | AI Models     | [OpenAI GPT-4](https://platform.openai.com/) / [Gemini Pro](https://ai.google.dev/) |
-| Documentation | Swagger + class-validator                                     |
-| Deployment    | Ready for Docker / CI-CD Pipelines                            |
+| Documentation | Swagger + class-validator                                                           |
+| Deployment    | Ready for Docker / CI-CD Pipelines                                                  |
 
 ---
 
