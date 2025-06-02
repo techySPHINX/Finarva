@@ -1,16 +1,20 @@
 {
   "compilerOptions": {
-    "module": "CommonJS",             
-    "target": "ES2017",               
-    "outDir": "./dist",              
+    "module": "CommonJS",
+    "target": "ES2017",
+    "outDir": "./dist",
     "rootDir": "./src",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "removeComments": true,
+    "incremental": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts", "**/*.js"]
 }
