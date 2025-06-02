@@ -1,0 +1,31 @@
+# Ignore node modules
+node_modules
+
+# Ignore build output
+dist
+
+# Ignore test and coverage directories
+coverage
+test
+test-results
+
+# Ignore Git files
+.git
+.gitignore
+
+# Ignore environment and secrets
+.env
+*.env
+.env.local
+
+# Ignore editor and IDE files
+.idea
+.vscode
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore documentation and examples
+docs
+examples
