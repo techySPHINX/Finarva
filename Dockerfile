@@ -29,6 +29,6 @@ USER appuser
 ENV PORT=3000
 EXPOSE 3000
 
-RUN ls -la /app
+RUN ls -la /app/dist
 
 CMD ["node", "dist/main.js"]
