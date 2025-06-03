@@ -9,32 +9,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 📦 Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: ⚙️ Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: 📥 Install dependencies
         run: npm ci
 
-      - name: Run Lint
+      - name: 🧼 Run Lint
         run: npm run lint
+        working-directory: ./
 
-      - name: Run Tests
+      - name: 🧪 Run Tests
         run: npm run test
+        working-directory: ./
 
-      - name: Build Docker image
+      - name: 🧾 Debug workspace contents
+        run: ls -la
+        working-directory: ./
+
+      - name: 🐳 Build Docker image
+        working-directory: .
         run: docker build -t fintrack-edge-backend .
 
-      - name: Deploy to Render
+      - name: 🚀 Deploy to Render
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK" ]; then
-            echo "Error: RENDER_DEPLOY_HOOK secret is not set."
+            echo "❌ Error: RENDER_DEPLOY_HOOK secret is not set."
             exit 1
           fi
           curl -X POST "$RENDER_DEPLOY_HOOK"

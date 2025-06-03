@@ -1,40 +1,7 @@
-# Node modules (reinstalled inside image)
 node_modules
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-pnpm-lock.yaml
-
-# Logs
-*.log
-logs
-*.log.*
-
-# Dist folder (rebuilt inside image)
 dist
-
-# OS-specific files
-.DS_Store
-Thumbs.db
-
-# Env files (handled through Docker secrets or ENV vars)
 .env
-.env.*
-
-# IDE/editor folders
-.vscode
-.idea
-
-# Git
 .git
 .gitignore
-
-# Docker-related
-Dockerfile
-docker-compose*.yml
-.dockerignore
-
-# Tests
-coverage
-test-results
-*.spec.ts
+README.md
+*.log
