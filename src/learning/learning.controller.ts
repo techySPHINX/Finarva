@@ -96,8 +96,7 @@ export class LearningController {
   recordProgress(
     @Param('id') contentId: string,
     @Body() dto: RecordProgressDto,
-    @Req() req: { user: { id: string } },
   ) {
-    return this.learningService.recordProgress(req.user.id, dto);
+    return this.learningService.recordProgress(dto.clientId, dto);
   }
 }

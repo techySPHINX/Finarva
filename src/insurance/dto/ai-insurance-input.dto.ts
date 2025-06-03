@@ -4,9 +4,11 @@ import {
   IsOptional,
   IsArray,
   IsNotEmpty,
-  IsObject,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { ClientProfileDto } from '../../clients/dto/client-profile.dto'; 
 
 export class AiInsuranceInputDto {
   @ApiProperty({ description: 'Unique identifier for the client' })
@@ -88,17 +90,10 @@ export class AiInsuranceInputDto {
 
   @ApiProperty({
     description: 'Profile of the client for suggesting insurance',
-    type: Object,
-    example: {
-      age: 32,
-      occupation: 'Farmer',
-      income: 40000,
-      dependents: 3,
-      existingInsurance: false,
-      healthStatus: 'Good',
-    },
+    type: ClientProfileDto,
   })
   @IsNotEmpty()
-  @IsObject()
-  clientProfile: Record<string, never> | undefined;
+  @ValidateNested()
+  @Type(() => ClientProfileDto)
+  clientProfile!: ClientProfileDto;
 }

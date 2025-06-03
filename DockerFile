@@ -1,41 +1,32 @@
-# Stage 1: Build the application
 FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install --production=false
+RUN npm install
 
-# Copy source code
 COPY . .
 
-# Build the application
+RUN npx prisma generate
+
 RUN npm run build
 
-# Stage 2: Production image
 FROM node:20-alpine
+
 WORKDIR /app
 
-# Copy package files and install only production dependencies
 COPY package*.json ./
 RUN npm install --production
 
-# Copy built files from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Optional: Set non-root user for security (recommended)
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
-# Set environment variable for port (can be overridden at runtime)
 ENV PORT=3000
-
-# Expose the default port (optional, but recommended for clarity)
 EXPOSE 3000
 
-# Healthcheck (optional, but recommended for production)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:${PORT}/health || exit 1
-
-# Start the application
 CMD ["node", "dist/main"]
