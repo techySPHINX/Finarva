@@ -7,6 +7,10 @@ import {
   Patch,
   Delete,
   Query,
+  BadRequestException,
+  NotFoundException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,22 +28,47 @@ import { BulkCreateInvestmentDto } from './dto/bulk-create-investment.dto';
 @ApiTags('Investments')
 @Controller('investments')
 export class InvestmentController {
+  private readonly logger = new Logger(InvestmentController.name);
+
   constructor(private readonly investmentService: InvestmentService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new investment' })
   @ApiBody({ type: CreateInvestmentDto })
   @ApiResponse({ status: 201, description: 'The investment has been created.' })
-  create(@Body() dto: CreateInvestmentDto) {
-    return this.investmentService.create(dto);
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async create(@Body() dto: CreateInvestmentDto) {
+    try {
+      return await this.investmentService.create(dto);
+    } catch (error) {
+      this.logger.error(
+        `Create investment failed: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
+      throw new InternalServerErrorException('Failed to create investment');
+    }
   }
 
   @Post('bulk')
   @ApiOperation({ summary: 'Create multiple investments in bulk' })
   @ApiBody({ type: BulkCreateInvestmentDto })
   @ApiResponse({ status: 201, description: 'Bulk investments created.' })
-  bulkCreate(@Body() dto: BulkCreateInvestmentDto) {
-    return this.investmentService.bulkCreate(dto);
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async bulkCreate(@Body() dto: BulkCreateInvestmentDto) {
+    try {
+      if (!dto || !dto.investments || !Array.isArray(dto.investments)) {
+        throw new BadRequestException('Invalid investments data');
+      }
+      return await this.investmentService.bulkCreate(dto);
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Bulk create failed: ${err.message}`, err.stack);
+      throw new InternalServerErrorException(
+        'Failed to create bulk investments',
+      );
+    }
   }
 
   @Get('client/:clientId')
@@ -54,19 +83,47 @@ export class InvestmentController {
     status: 200,
     description: 'List of investments for the client.',
   })
-  findAllByClient(
+  @ApiResponse({ status: 400, description: 'Invalid client ID format' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async findAllByClient(
     @Param('clientId') clientId: string,
     @Query('status') status?: string,
   ) {
-    return this.investmentService.findAllByClient(clientId, status);
+    if (!clientId || typeof clientId !== 'string') {
+      throw new BadRequestException('Invalid client ID format');
+    }
+    try {
+      return await this.investmentService.findAllByClient(clientId, status);
+    } catch (error) {
+      this.logger.error(
+        `Find all by client failed: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
+      throw new InternalServerErrorException('Failed to retrieve investments');
+    }
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get investment by ID' })
   @ApiParam({ name: 'id', description: 'The investment ID' })
   @ApiResponse({ status: 200, description: 'The investment record.' })
-  findOne(@Param('id') id: string) {
-    return this.investmentService.findOne(id);
+  @ApiResponse({ status: 400, description: 'Invalid ID format' })
+  @ApiResponse({ status: 404, description: 'Investment not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async findOne(@Param('id') id: string) {
+    if (!id || typeof id !== 'string') {
+      throw new BadRequestException('Invalid investment ID format');
+    }
+    try {
+      return await this.investmentService.findOne(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      const err = error as Error;
+      this.logger.error(`Find one failed: ${err.message}`, err.stack);
+      throw new InternalServerErrorException('Failed to retrieve investment');
+    }
   }
 
   @Patch(':id')
@@ -74,16 +131,40 @@ export class InvestmentController {
   @ApiParam({ name: 'id', description: 'The investment ID' })
   @ApiBody({ type: UpdateInvestmentDto })
   @ApiResponse({ status: 200, description: 'The updated investment.' })
-  update(@Param('id') id: string, @Body() dto: UpdateInvestmentDto) {
-    return this.investmentService.update(id, dto);
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 404, description: 'Investment not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async update(@Param('id') id: string, @Body() dto: UpdateInvestmentDto) {
+    if (!id || typeof id !== 'string') {
+      throw new BadRequestException('Invalid investment ID format');
+    }
+    try {
+      return await this.investmentService.update(id, dto);
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Update failed: ${err.message}`, err.stack);
+      throw new InternalServerErrorException('Failed to update investment');
+    }
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete investment by ID' })
   @ApiParam({ name: 'id', description: 'The investment ID' })
   @ApiResponse({ status: 200, description: 'The deleted investment.' })
-  remove(@Param('id') id: string) {
-    return this.investmentService.remove(id);
+  @ApiResponse({ status: 400, description: 'Invalid ID format' })
+  @ApiResponse({ status: 404, description: 'Investment not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async remove(@Param('id') id: string) {
+    if (!id || typeof id !== 'string') {
+      throw new BadRequestException('Invalid investment ID format');
+    }
+    try {
+      return await this.investmentService.remove(id);
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Remove failed: ${err.message}`, err.stack);
+      throw new InternalServerErrorException('Failed to delete investment');
+    }
   }
 
   @Get('client/:clientId/types')
@@ -95,11 +176,47 @@ export class InvestmentController {
     description: 'Comma-separated investment types',
   })
   @ApiResponse({ status: 200, description: 'Filtered investments.' })
-  findByClientAndTypes(
+  @ApiResponse({ status: 400, description: 'Invalid parameters' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async findByClientAndTypes(
     @Param('clientId') clientId: string,
-    @Query('types') types: string ,
+    @Query('types') types: string,
   ) {
-    const typeList = types?.split(',') || [];
-    return this.investmentService.findByClientAndTypes(clientId, typeList);
+    if (!clientId || typeof clientId !== 'string') {
+      throw new BadRequestException('Invalid client ID format');
+    }
+    if (!types || typeof types !== 'string') {
+      throw new BadRequestException('Invalid types parameter');
+    }
+
+    const typeList = types
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    if (typeList.length === 0) {
+      throw new BadRequestException('Types parameter cannot be empty');
+    }
+
+    try {
+      return await this.investmentService.findByClientAndTypes(
+        clientId,
+        typeList,
+      );
+    } catch (error) {
+      if (error instanceof Error) {
+        this.logger.error(
+          `Find by client and types failed: ${error.message}`,
+          error.stack,
+        );
+      } else {
+        this.logger.error(
+          'Find by client and types failed: Unknown error',
+          ''
+        );
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve filtered investments',
+      );
+    }
   }
 }
