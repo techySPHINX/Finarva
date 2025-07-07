@@ -23,24 +23,21 @@ export class LearningService {
     dto: CreateLearningContentDto,
     creatorId: string,
   ): Promise<LearningContent> {
-    // Validate required fields
     if (!dto.title || !dto.type || !dto.url) {
       throw new BadRequestException('Title, type, and URL are required');
     }
 
     try {
       return await this.prisma.learningContent.create({
-        data: {
-          ...dto,
-          createdById: creatorId,
-        },
+        data: { ...dto, createdById: creatorId },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error && typeof error === 'object' && 'code' in error) {
         if (error.code === 'P2002') {
           throw new ConflictException('Content with this URL already exists');
         }
       }
+
       if (error instanceof Error) {
         this.logger.error(`Create failed: ${error.message}`, error.stack);
       } else {
@@ -62,11 +59,16 @@ export class LearningService {
         data: dto,
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(`Content with id ${id} not found`);
-        }
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`Content with id ${id} not found`);
       }
+
+      // Handle other errors
       if (error instanceof Error) {
         this.logger.error(`Update failed: ${error.message}`, error.stack);
       } else {
@@ -152,7 +154,10 @@ export class LearningService {
       });
     } catch (error) {
       if (error instanceof Error) {
-        this.logger.error(`Profile search failed: ${error.message}`, error.stack);
+        this.logger.error(
+          `Profile search failed: ${error.message}`,
+          error.stack,
+        );
       } else {
         this.logger.error('Profile search failed: Unknown error');
       }

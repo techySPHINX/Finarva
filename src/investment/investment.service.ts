@@ -9,7 +9,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { UpdateInvestmentDto } from './dto/update-investment.dto';
 import { BulkCreateInvestmentDto } from './dto/bulk-create-investment.dto';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InvestmentService {
@@ -21,17 +20,19 @@ export class InvestmentService {
     try {
       return await this.prisma.investment.create({ data });
     } catch (error) {
-      this.logger.error(
-        `Create investment failed: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // Handle known error codes regardless of error type
+      if (error && typeof error === 'object' && 'code' in error) {
         if (error.code === 'P2002') {
           throw new BadRequestException('Duplicate investment entry');
         } else if (error.code === 'P2003') {
           throw new BadRequestException('Invalid foreign key reference');
         }
       }
+
+      this.logger.error(
+        `Create investment failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new InternalServerErrorException('Failed to create investment');
     }
   }
@@ -111,17 +112,19 @@ export class InvestmentService {
     try {
       return await this.prisma.investment.update({ where: { id }, data });
     } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`Update failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error('Update failed: Unknown error');
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // Handle known error codes regardless of error type
+      if (error && typeof error === 'object' && 'code' in error) {
         if (error.code === 'P2025') {
           throw new NotFoundException(`Investment with id ${id} not found`);
         } else if (error.code === 'P2002') {
           throw new BadRequestException('Duplicate investment entry');
         }
+      }
+
+      if (error instanceof Error) {
+        this.logger.error(`Update failed: ${error.message}`, error.stack);
+      } else {
+        this.logger.error('Update failed: Unknown error');
       }
       throw new InternalServerErrorException('Failed to update investment');
     }
@@ -135,11 +138,13 @@ export class InvestmentService {
     try {
       return await this.prisma.investment.delete({ where: { id } });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // Handle known error codes regardless of error type
+      if (error && typeof error === 'object' && 'code' in error) {
         if (error.code === 'P2025') {
           throw new NotFoundException(`Investment with id ${id} not found`);
         }
       }
+
       if (error instanceof Error) {
         this.logger.error(`Remove failed: ${error.message}`, error.stack);
       } else {
@@ -171,9 +176,7 @@ export class InvestmentService {
           error.stack,
         );
       } else {
-        this.logger.error(
-          'Find by client and types failed: Unknown error',
-        );
+        this.logger.error('Find by client and types failed: Unknown error');
       }
       throw new InternalServerErrorException(
         'Failed to retrieve filtered investments',

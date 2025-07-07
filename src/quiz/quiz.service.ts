@@ -36,11 +36,10 @@ export class QuizService {
         },
       });
     } catch (error) {
-      this.logger.error(`Create quiz failed: ${(error as any).message}`, (error as any).stack);
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new BadRequestException('Quiz with this title already exists');
-        }
+      const err = error as any;
+      this.logger.error(`Create quiz failed: ${err?.message}`, err?.stack);
+      if (err?.code === 'P2002') {
+        throw new BadRequestException('Quiz with this title already exists');
       }
       throw new InternalServerErrorException('Failed to create quiz');
     }
@@ -71,7 +70,10 @@ export class QuizService {
         },
       });
     } catch (error) {
-      this.logger.error(`Add question failed: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(
+        `Add question failed: ${(error as any)?.message}`,
+        (error as any)?.stack,
+      );
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -104,8 +106,8 @@ export class QuizService {
       });
     } catch (error) {
       this.logger.error(
-        `Get all quizzes failed: ${(error as any).message}`,
-        (error as any).stack,
+        `Get all quizzes failed: ${(error as any)?.message}`,
+        (error as any)?.stack,
       );
       throw new InternalServerErrorException('Failed to retrieve quizzes');
     }
@@ -131,7 +133,10 @@ export class QuizService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      this.logger.error(`Get quiz by ID failed: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(
+        `Get quiz by ID failed: ${(error as any)?.message}`,
+        (error as any)?.stack,
+      );
       throw new InternalServerErrorException('Failed to retrieve quiz');
     }
   }
@@ -142,22 +147,22 @@ export class QuizService {
     }
 
     try {
-      const existing = await this.prisma.quiz.findUnique({ where: { id } });
-      if (!existing) {
-        throw new NotFoundException('Quiz not found');
-      }
-
       return await this.prisma.quiz.update({
         where: { id },
         data: dto,
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(`Quiz with id ${id} not found`);
-        }
+      if ((error as any)?.code === 'P2025') {
+        throw new NotFoundException(`Quiz with id ${id} not found`);
       }
-      this.logger.error(`Update quiz failed: ${(error as any).message}`, (error as any).stack);
+      if ((error as any)?.code === 'P2023') {
+        throw new BadRequestException('Invalid quiz ID format');
+      }
+
+      this.logger.error(
+        `Update quiz failed: ${(error as any)?.message}`,
+        (error as any)?.stack,
+      );
       throw new InternalServerErrorException('Failed to update quiz');
     }
   }
@@ -168,24 +173,26 @@ export class QuizService {
     }
 
     try {
-      const existing = await this.prisma.quiz.findUnique({ where: { id } });
-      if (!existing) {
-        throw new NotFoundException('Quiz not found');
+      return await this.prisma.$transaction(async (prisma) => {
+        await prisma.question.deleteMany({ where: { quizId: id } });
+
+        return await prisma.quiz.delete({ where: { id } });
+      });
+    } catch (error) {
+      if ((error as any)?.code === 'P2025') {
+        throw new NotFoundException(`Quiz with id ${id} not found`);
+      }
+      if ((error as any)?.code === 'P2023') {
+        throw new BadRequestException('Invalid quiz ID format');
       }
 
-      await this.prisma.question.deleteMany({ where: { quizId: id } });
-      return await this.prisma.quiz.delete({ where: { id } });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(`Quiz with id ${id} not found`);
-        }
-      }
-      this.logger.error(`Delete quiz failed: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(
+        `Delete quiz failed: ${(error as any)?.message}`,
+        (error as any)?.stack,
+      );
       throw new InternalServerErrorException('Failed to delete quiz');
     }
   }
-
   private async validateQuizAnswers(quizId: string, answers: string[]) {
     const quiz = await this.getQuizById(quizId);
 
@@ -218,10 +225,24 @@ export class QuizService {
         throw new NotFoundException(`Client with id ${clientId} not found`);
       }
 
-      let score = dto.score ?? 0;
-      if (score <= 0) {
-        const result = await this.validateQuizAnswers(dto.quizId, dto.answers);
-        score = result.score;
+      let score = dto.score || 0;
+
+      if (!dto.score) {
+        const quiz = await this.getQuizById(dto.quizId);
+
+        if (!quiz.questions || quiz.questions.length === 0) {
+          throw new BadRequestException('Quiz has no questions');
+        }
+
+        // Calculate score from answers
+        score = 0;
+        for (let i = 0; i < quiz.questions.length; i++) {
+          const q = quiz.questions[i];
+          const answer = dto.answers[i] || '';
+          if (answer.toLowerCase() === q.answer.toLowerCase()) {
+            score++;
+          }
+        }
       }
 
       return await this.prisma.clientQuizAttempt.create({
@@ -239,7 +260,10 @@ export class QuizService {
       ) {
         throw error;
       }
-      this.logger.error(`Submit quiz failed: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(
+        `Submit quiz failed: ${(error as any).message}`,
+        (error as any).stack,
+      );
       throw new InternalServerErrorException('Failed to submit quiz');
     }
   }
@@ -262,7 +286,10 @@ export class QuizService {
         },
       });
     } catch (error) {
-      this.logger.error(`Get attempts failed: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(
+        `Get attempts failed: ${(error as any).message}`,
+        (error as any).stack,
+      );
       throw new InternalServerErrorException(
         'Failed to retrieve quiz attempts',
       );

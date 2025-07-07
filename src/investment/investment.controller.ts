@@ -11,6 +11,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   Logger,
+  HttpException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -63,6 +64,10 @@ export class InvestmentController {
       }
       return await this.investmentService.bulkCreate(dto);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       const err = error as Error;
       this.logger.error(`Bulk create failed: ${err.message}`, err.stack);
       throw new InternalServerErrorException(

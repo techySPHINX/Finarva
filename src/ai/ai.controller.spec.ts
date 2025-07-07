@@ -1,105 +1,149 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 describe('AiController', () => {
   let controller: AiController;
   let aiService: AiService;
 
   const mockAiService = {
-    generateQuizSuggestions: jest.fn().mockResolvedValue(['Q1', 'Q2', 'Q3']),
-    analyzeLearningContent: jest
-      .fn()
-      .mockResolvedValue('Engagement looks good.'),
-    suggestInvestments: jest.fn().mockResolvedValue('Invest in mutual funds.'),
-    suggestInsurance: jest.fn().mockResolvedValue('Consider term insurance.'),
-  };
-
-  const inputClientProfile = {
-    id: '1',
-    name: 'Test Client',
-    phone: '1234567890',
-    agentId: 'agent1',
-    language: 'en',
-    goals: [],
-  };
-
-  const expectedMappedClientProfile = {
-    id: 'unknown-id',
-    name: 'unknown-name',
-    phone: 'unknown-phone',
-    agentId: 'unknown-agent',
-    language: 'en',
-    goals: [],
-  };
-
-  const learningData = {
-    viewedContentIds: ['content1', 'content2'],
-    completedContentIds: ['content2'],
-    engagementScore: 75,
+    generateQuizSuggestions: jest.fn(),
+    analyzeLearningContent: jest.fn(),
+    suggestInvestments: jest.fn(),
+    suggestInsurance: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AiController],
       providers: [{ provide: AiService, useValue: mockAiService }],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+    }).compile();
 
     controller = module.get<AiController>(AiController);
     aiService = module.get<AiService>(AiService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should return quiz suggestions', async () => {
-    const result = await controller.generateQuizQuestions({
-      clientProfile: inputClientProfile,
+  describe('generateQuizQuestions', () => {
+    it('should return quiz suggestions successfully', async () => {
+      const dto = { clientProfile: { language: 'en', goals: [] } } as any;
+      const result = ['q1', 'q2'];
+      mockAiService.generateQuizSuggestions.mockResolvedValue(result);
+
+      expect(await controller.generateQuizQuestions(dto)).toEqual(result);
     });
 
-    expect(result).toEqual(['Q1', 'Q2', 'Q3']);
-    expect(mockAiService.generateQuizSuggestions).toHaveBeenCalledWith(
-      expectedMappedClientProfile,
-    );
+    it('should throw BadRequestException if clientProfile missing', async () => {
+      await expect(controller.generateQuizQuestions({} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      const dto = { clientProfile: { language: 'en', goals: [] } } as any;
+      mockAiService.generateQuizSuggestions.mockRejectedValue(
+        new Error('AI error'),
+      );
+
+      await expect(controller.generateQuizQuestions(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should return investment advice', async () => {
-    const result = await controller.suggestInvestments({
-      clientProfile: inputClientProfile,
+  describe('analyzeLearningContent', () => {
+    it('should return content insights successfully', async () => {
+      const dto = {
+        clientProfile: { language: 'en', goals: [] },
+        learningData: { module1: 'watched' },
+      } as any;
+      const result = 'insights';
+      mockAiService.analyzeLearningContent.mockResolvedValue(result);
+
+      expect(await controller.analyzeLearningContent(dto)).toEqual(result);
     });
 
-    expect(result).toContain('mutual funds');
-    expect(mockAiService.suggestInvestments).toHaveBeenCalledWith(
-      expectedMappedClientProfile,
-    );
+    it('should throw BadRequestException if clientProfile missing', async () => {
+      await expect(
+        controller.analyzeLearningContent({ learningData: {} } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if learningData missing or empty', async () => {
+      await expect(
+        controller.analyzeLearningContent({ clientProfile: {} } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      const dto = {
+        clientProfile: { language: 'en', goals: [] },
+        learningData: { module: 'watched' },
+      } as any;
+      mockAiService.analyzeLearningContent.mockRejectedValue(
+        new Error('AI error'),
+      );
+
+      await expect(controller.analyzeLearningContent(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should return insurance advice', async () => {
-    const result = await controller.suggestInsurance({
-      clientProfile: inputClientProfile,
+  describe('suggestInvestments', () => {
+    it('should return investment suggestions successfully', async () => {
+      const dto = { clientProfile: { language: 'en', goals: [] } } as any;
+      const result = 'investment suggestion';
+      mockAiService.suggestInvestments.mockResolvedValue(result);
+
+      expect(await controller.suggestInvestments(dto)).toEqual(result);
     });
 
-    expect(result).toContain('term insurance');
-    expect(mockAiService.suggestInsurance).toHaveBeenCalledWith(
-      expectedMappedClientProfile,
-    );
+    it('should throw BadRequestException if clientProfile missing', async () => {
+      await expect(controller.suggestInvestments({} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      const dto = { clientProfile: { language: 'en', goals: [] } } as any;
+      mockAiService.suggestInvestments.mockRejectedValue(new Error('AI error'));
+
+      await expect(controller.suggestInvestments(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should return learning content insights', async () => {
-    const result = await controller.analyzeLearningContent({
-      clientProfile: inputClientProfile,
-      learningData,
+  describe('suggestInsurance', () => {
+    it('should return insurance suggestions successfully', async () => {
+      const dto = { clientProfile: { language: 'en', goals: [] } } as any;
+      const result = 'insurance suggestion';
+      mockAiService.suggestInsurance.mockResolvedValue(result);
+
+      expect(await controller.suggestInsurance(dto)).toEqual(result);
     });
 
-    expect(result).toContain('Engagement looks good');
-    expect(mockAiService.analyzeLearningContent).toHaveBeenCalledWith(
-      expectedMappedClientProfile,
-      learningData,
-    );
+    it('should throw BadRequestException if clientProfile missing', async () => {
+      await expect(controller.suggestInsurance({} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      const dto = { clientProfile: { language: 'en', goals: [] } } as any;
+      mockAiService.suggestInsurance.mockRejectedValue(new Error('AI error'));
+
+      await expect(controller.suggestInsurance(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 });

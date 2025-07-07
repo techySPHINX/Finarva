@@ -14,7 +14,6 @@ import { AiInsuranceInputDto } from './dto/ai-insurance-input.dto';
 import { ClientProfileDto } from '../clients/dto/client-profile.dto';
 import { AnalyzeProfileDto } from '../ai/dto/analyze-profile.dto';
 import { Insurance, Client } from '@prisma/client';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InsuranceService {
@@ -46,15 +45,15 @@ export class InsuranceService {
 
     try {
       return await this.prisma.insurance.create({ data: insuranceData });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('Unique constraint violation');
-        } else if (error.code === 'P2003') {
-          throw new BadRequestException('Invalid foreign key reference');
-        }
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        throw new ConflictException('Unique constraint violation');
       }
-      this.logger.error(`Create failed: ${(error as any).message}`, (error as any).stack);
+      if (error?.code === 'P2003') {
+        throw new BadRequestException('Invalid foreign key reference');
+      }
+
+      this.logger.error(`Create failed: ${error?.message}`, error?.stack);
       throw new InternalServerErrorException('Database operation failed');
     }
   }
@@ -64,8 +63,8 @@ export class InsuranceService {
       return await this.prisma.insurance.findMany({
         include: { client: true },
       });
-    } catch (error) {
-      this.logger.error(`FindAll failed: ${(error as any).message}`, (error as any).stack);
+    } catch (error: any) {
+      this.logger.error(`FindAll failed: ${error?.message}`, error?.stack);
       throw new InternalServerErrorException(
         'Failed to retrieve insurance entries',
       );
@@ -83,11 +82,11 @@ export class InsuranceService {
         );
       }
       return entries;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof NotFoundException) throw error;
       this.logger.error(
-        `FindAllByClient failed: ${(error as any).message}`,
-        (error as any).stack,
+        `FindAllByClient failed: ${error?.message}`,
+        error?.stack,
       );
       throw new InternalServerErrorException(
         'Failed to retrieve client insurance entries',
@@ -104,9 +103,9 @@ export class InsuranceService {
         throw new NotFoundException(`Insurance with id ${id} not found`);
       }
       return insurance;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof NotFoundException) throw error;
-      this.logger.error(`FindOne failed: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(`FindOne failed: ${error?.message}`, error?.stack);
       throw new InternalServerErrorException(
         'Failed to retrieve insurance entry',
       );
@@ -119,15 +118,15 @@ export class InsuranceService {
         where: { id },
         data,
       });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(`Insurance with id ${id} not found`);
-        } else if (error.code === 'P2002') {
-          throw new ConflictException('Unique constraint violation');
-        }
+    } catch (error: any) {
+      if (error?.code === 'P2025') {
+        throw new NotFoundException(`Insurance with id ${id} not found`);
       }
-      this.logger.error(`Update failed: ${(error as any).message}`, (error as any).stack);
+      if (error?.code === 'P2002') {
+        throw new ConflictException('Unique constraint violation');
+      }
+
+      this.logger.error(`Update failed: ${error?.message}`, error?.stack);
       throw new InternalServerErrorException('Failed to update insurance');
     }
   }
@@ -138,12 +137,12 @@ export class InsuranceService {
         where: { id },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(`Insurance with id ${id} not found`);
-        }
+      const err: any = error;
+      if (err?.code === 'P2025') {
+        throw new NotFoundException(`Insurance with id ${id} not found`);
       }
-      this.logger.error(`Remove failed: ${(error as any).message}`, (error as any).stack);
+
+      this.logger.error(`Remove failed: ${err?.message}`, err?.stack);
       throw new InternalServerErrorException('Failed to delete insurance');
     }
   }
@@ -156,10 +155,9 @@ export class InsuranceService {
     try {
       const clientProfile = this.mapAnalyzeToClientProfile(dto.clientProfile);
       return await this.aiService.suggestInsurance(clientProfile);
-    } catch (error) {
-      const errMsg = (error as any)?.message || 'Unknown error';
-      const errStack = (error as any)?.stack;
-      this.logger.error(`AI suggestion failed: ${errMsg}`, errStack);
+    } catch (error: any) {
+      const errMsg = error?.message || 'Unknown error';
+      this.logger.error(`AI suggestion failed: ${errMsg}`, error?.stack);
       if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException('AI service unavailable');
     }

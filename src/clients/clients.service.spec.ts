@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ClientsService } from './clients.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { ClientsService } from './clients.service';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Client, Prisma } from '@prisma/client';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 
@@ -9,21 +14,57 @@ describe('ClientsService', () => {
   let service: ClientsService;
   let prisma: PrismaService;
 
-  const mockPrisma = {
-    client: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
+  const sampleAgentId = 'agent-1';
+  const sampleClient: Client = {
+    id: 'client-1',
+    name: 'John Doe',
+    phone: '9999999999',
+    preferredLanguage: 'en',
+    age: 30,
+    gender: 'Male',
+    income: 50000,
+    goals: ['Retirement', 'Education'],
+    agentId: sampleAgentId,
+    createdAt: new Date(),
+    language: '',
+    occupation: null,
+    interests: [],
+    investmentExperience: null
+  };
+
+  const sampleCreateDto: CreateClientDto = {
+    name: sampleClient.name,
+    phone: sampleClient.phone,
+    language: sampleClient.preferredLanguage ?? 'en',
+    age: sampleClient.age === null ? undefined : sampleClient.age,
+    gender: sampleClient.gender === null ? undefined : sampleClient.gender,
+    income: sampleClient.income === null ? undefined : sampleClient.income,
+    goals: sampleClient.goals,
+  };
+
+  const sampleUpdateDto: UpdateClientDto = {
+    name: 'Updated Name',
+    phone: '8888888888',
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ClientsService,
-        { provide: PrismaService, useValue: mockPrisma },
+        {
+          provide: PrismaService,
+          useValue: {
+            client: {
+              create: jest.fn().mockResolvedValue(sampleClient),
+              findMany: jest.fn().mockResolvedValue([sampleClient]),
+              findUnique: jest.fn().mockResolvedValue(sampleClient),
+              update: jest
+                .fn()
+                .mockResolvedValue({ ...sampleClient, ...sampleUpdateDto }),
+              delete: jest.fn().mockResolvedValue(sampleClient),
+            },
+          },
+        },
       ],
     }).compile();
 
@@ -35,103 +76,252 @@ describe('ClientsService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should create a client', async () => {
-    const dto: CreateClientDto = {
-      name: 'John Doe',
-      phone: '1234567890',
-      language: 'en',
-      goals: ['retirement'],
-    };
-    const agentId = 'agent-1';
+  describe('create', () => {
+    it('should create a client successfully', async () => {
+      const result = await service.create(sampleCreateDto, sampleAgentId);
+      expect(result).toEqual(sampleClient);
+      expect(prisma.client.create).toHaveBeenCalledWith({
+        data: {
+          ...sampleCreateDto,
+          agentId: sampleAgentId,
+          preferredLanguage: sampleCreateDto.language,
+        },
+      });
+    });
 
-    const createdClient = { id: '1', ...dto, agentId };
-    mockPrisma.client.create.mockResolvedValue(createdClient);
+    it('should throw BadRequestException when name or phone is missing', async () => {
+      await expect(
+        service.create({} as CreateClientDto, sampleAgentId),
+      ).rejects.toThrow(BadRequestException);
+    });
 
-    const result = await service.create(dto, agentId);
-    expect(result).toEqual(createdClient);
-    expect(mockPrisma.client.create).toHaveBeenCalledWith({
-      data: { ...dto, agentId },
+    it('should throw BadRequestException on phone conflict', async () => {
+      const error = new Prisma.PrismaClientKnownRequestError('Conflict', {
+        code: 'P2002',
+        clientVersion: '1.0',
+        meta: { target: ['phone'] },
+      });
+      jest.spyOn(prisma.client, 'create').mockRejectedValueOnce(error);
+
+      await expect(
+        service.create(sampleCreateDto, sampleAgentId),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw InternalServerErrorException on unknown error', async () => {
+      jest
+        .spyOn(prisma.client, 'create')
+        .mockRejectedValueOnce(new Error('DB error'));
+
+      await expect(
+        service.create(sampleCreateDto, sampleAgentId),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
-  it('should return clients by agent', async () => {
-    mockPrisma.client.findMany.mockResolvedValue([]);
-    const result = await service.findAllByAgent('agent-1');
-    expect(result).toEqual([]);
-    expect(mockPrisma.client.findMany).toHaveBeenCalledWith({
-      where: { agentId: 'agent-1' },
-      orderBy: { createdAt: 'desc' },
+  describe('findAllByAgent', () => {
+    it('should return clients for an agent', async () => {
+      const result = await service.findAllByAgent(sampleAgentId);
+      expect(result).toEqual([sampleClient]);
+      expect(prisma.client.findMany).toHaveBeenCalledWith({
+        where: { agentId: sampleAgentId },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+
+    it('should throw InternalServerErrorException on error', async () => {
+      jest
+        .spyOn(prisma.client, 'findMany')
+        .mockRejectedValueOnce(new Error('DB error'));
+      await expect(service.findAllByAgent(sampleAgentId)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
-  it('should return a client by ID', async () => {
-    const client = { id: '1', name: 'John' };
-    mockPrisma.client.findUnique.mockResolvedValue(client);
-    const result = await service.findOne('1');
-    expect(result).toEqual(client);
+  describe('findOne', () => {
+    it('should return a client by id', async () => {
+      const result = await service.findOne(sampleClient.id);
+      expect(result).toEqual(sampleClient);
+      expect(prisma.client.findUnique).toHaveBeenCalledWith({
+        where: { id: sampleClient.id },
+      });
+    });
+
+    it('should throw BadRequestException for invalid id format', async () => {
+      await expect(service.findOne(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw NotFoundException when client not found', async () => {
+      jest.spyOn(prisma.client, 'findUnique').mockResolvedValueOnce(null);
+      await expect(service.findOne('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on error', async () => {
+      jest
+        .spyOn(prisma.client, 'findUnique')
+        .mockRejectedValueOnce(new Error('DB error'));
+      await expect(service.findOne(sampleClient.id)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should throw if client not found on findOne', async () => {
-    mockPrisma.client.findUnique.mockResolvedValue(null);
-    await expect(service.findOne('123')).rejects.toThrow(NotFoundException);
+  describe('update', () => {
+    it('should update a client successfully', async () => {
+      const result = await service.update(sampleClient.id, sampleUpdateDto);
+      expect(result).toEqual({ ...sampleClient, ...sampleUpdateDto });
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: sampleClient.id },
+        data: {
+          ...sampleUpdateDto,
+          preferredLanguage: sampleUpdateDto.language,
+        },
+      });
+    });
+
+    it('should throw BadRequestException for invalid id format', async () => {
+      await expect(
+        service.update(null as any, sampleUpdateDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException if client not found', async () => {
+      const error = new Prisma.PrismaClientKnownRequestError('Not found', {
+        code: 'P2025',
+        clientVersion: '1.0',
+      });
+      jest.spyOn(prisma.client, 'update').mockRejectedValueOnce(error);
+
+      await expect(
+        service.update('non-existent-id', sampleUpdateDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException on phone conflict', async () => {
+      const error = new Prisma.PrismaClientKnownRequestError('Conflict', {
+        code: 'P2002',
+        clientVersion: '1.0',
+        meta: { target: ['phone'] },
+      });
+      jest.spyOn(prisma.client, 'update').mockRejectedValueOnce(error);
+
+      await expect(
+        service.update(sampleClient.id, sampleUpdateDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw InternalServerErrorException on unknown error', async () => {
+      jest
+        .spyOn(prisma.client, 'update')
+        .mockRejectedValueOnce(new Error('DB error'));
+      await expect(
+        service.update(sampleClient.id, sampleUpdateDto),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
   });
 
-  it('should update a client', async () => {
-    const existing = { id: '1', name: 'John' };
-    const dto: UpdateClientDto = { name: 'Jane' };
-    const updated = { id: '1', name: 'Jane' };
+  describe('remove', () => {
+    it('should remove a client successfully', async () => {
+      const result = await service.remove(sampleClient.id);
+      expect(result).toEqual(sampleClient);
+      expect(prisma.client.delete).toHaveBeenCalledWith({
+        where: { id: sampleClient.id },
+      });
+    });
 
-    mockPrisma.client.findUnique.mockResolvedValue(existing);
-    mockPrisma.client.update.mockResolvedValue(updated);
+    it('should throw BadRequestException for invalid id format', async () => {
+      await expect(service.remove(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
 
-    const result = await service.update('1', dto);
-    expect(result).toEqual(updated);
+    it('should throw NotFoundException if client not found', async () => {
+      const error = new Prisma.PrismaClientKnownRequestError('Not found', {
+        code: 'P2025',
+        clientVersion: '1.0',
+      });
+      jest.spyOn(prisma.client, 'delete').mockRejectedValueOnce(error);
+
+      await expect(service.remove('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on unknown error', async () => {
+      jest
+        .spyOn(prisma.client, 'delete')
+        .mockRejectedValueOnce(new Error('DB error'));
+      await expect(service.remove(sampleClient.id)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should throw if client not found on update', async () => {
-    mockPrisma.client.findUnique.mockResolvedValue(null);
-    await expect(service.update('1', { name: 'X' })).rejects.toThrow(
-      NotFoundException,
-    );
-  });
+  describe('getClientProfile', () => {
+    it('should return client profile', async () => {
+      const result = await service.getClientProfile(sampleClient.id);
+      expect(result).toEqual({
+        id: sampleClient.id,
+        name: sampleClient.name,
+        phone: sampleClient.phone,
+        language: sampleClient.preferredLanguage,
+        age: sampleClient.age,
+        gender: sampleClient.gender,
+        income: sampleClient.income,
+        goals: sampleClient.goals,
+        agentId: sampleClient.agentId,
+      });
+    });
 
-  it('should delete a client', async () => {
-    const client = { id: '1', name: 'John' };
-    mockPrisma.client.findUnique.mockResolvedValue(client);
-    mockPrisma.client.delete.mockResolvedValue(client);
-    const result = await service.remove('1');
-    expect(result).toEqual(client);
-  });
+    it('should handle missing optional fields', async () => {
+      const clientWithoutOptional: Client = {
+        ...sampleClient,
+        age: null,
+        gender: null,
+        income: null,
+        goals: [],
+        preferredLanguage: null,
+      };
 
-  it('should throw if client not found on delete', async () => {
-    mockPrisma.client.findUnique.mockResolvedValue(null);
-    await expect(service.remove('1')).rejects.toThrow(NotFoundException);
-  });
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValueOnce(clientWithoutOptional);
 
-  it('should get client profile', async () => {
-    const client = {
-      id: '1',
-      name: 'John',
-      phone: '123',
-      language: 'en',
-      age: 30,
-      gender: 'male',
-      income: 50000,
-      goals: ['retirement'],
-      agentId: 'agent-1',
-    };
-    mockPrisma.client.findUnique.mockResolvedValue(client);
-    const result = await service.getClientProfile('1');
-    expect(result).toEqual({
-      id: '1',
-      name: 'John',
-      phone: '123',
-      language: 'en',
-      age: 30,
-      gender: 'male',
-      income: 50000,
-      goals: ['retirement'],
-      agentId: 'agent-1',
+      const result = await service.getClientProfile(sampleClient.id);
+      expect(result).toEqual({
+        id: sampleClient.id,
+        name: sampleClient.name,
+        phone: sampleClient.phone,
+        language: 'en', // Default from service
+        age: undefined,
+        gender: undefined,
+        income: undefined,
+        goals: [], // Default empty array
+        agentId: sampleClient.agentId,
+      });
+    });
+
+    it('should propagate NotFoundException', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockRejectedValueOnce(new NotFoundException('Not found'));
+      await expect(service.getClientProfile('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should propagate other errors', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockRejectedValueOnce(new Error('DB error'));
+      await expect(service.getClientProfile(sampleClient.id)).rejects.toThrow(
+        Error,
+      );
     });
   });
 });

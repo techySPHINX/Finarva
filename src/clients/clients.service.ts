@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
   Logger,
@@ -19,7 +18,6 @@ export class ClientsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: CreateClientDto, agentId: string): Promise<Client> {
-    // Validate required fields
     if (!data.name || !data.phone) {
       throw new BadRequestException('Name and phone are required');
     }
@@ -29,6 +27,7 @@ export class ClientsService {
         data: {
           ...data,
           agentId,
+          preferredLanguage: data.language || '', 
         },
       });
     } catch (error) {
@@ -37,11 +36,7 @@ export class ClientsService {
           throw new BadRequestException('Phone number already exists');
         }
       }
-      if (error instanceof Error) {
-        this.logger.error(`Create failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error('Create failed: Unknown error', '');
-      }
+      this.logError('Create', error);
       throw new InternalServerErrorException('Failed to create client');
     }
   }
@@ -53,11 +48,7 @@ export class ClientsService {
         orderBy: { createdAt: 'desc' },
       });
     } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`FindAllByAgent failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error('FindAllByAgent failed: Unknown error', '');
-      }
+      this.logError('FindAllByAgent', error);
       throw new InternalServerErrorException('Failed to retrieve clients');
     }
   }
@@ -78,11 +69,7 @@ export class ClientsService {
       return client;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
-      if (error instanceof Error) {
-        this.logger.error(`FindOne failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error('FindOne failed: Unknown error', '');
-      }
+      this.logError('FindOne', error);
       throw new InternalServerErrorException('Failed to retrieve client');
     }
   }
@@ -95,7 +82,10 @@ export class ClientsService {
     try {
       return await this.prisma.client.update({
         where: { id },
-        data,
+        data: {
+          ...data,
+          preferredLanguage: data.language || undefined, 
+        },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -105,11 +95,7 @@ export class ClientsService {
           throw new BadRequestException('Phone number already exists');
         }
       }
-      if (error instanceof Error) {
-        this.logger.error(`Update failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error('Update failed: Unknown error', '');
-      }
+      this.logError('Update', error);
       throw new InternalServerErrorException('Failed to update client');
     }
   }
@@ -129,11 +115,7 @@ export class ClientsService {
           throw new NotFoundException(`Client with id ${id} not found`);
         }
       }
-      if (error instanceof Error) {
-        this.logger.error(`Remove failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error('Remove failed: Unknown error', '');
-      }
+      this.logError('Remove', error);
       throw new InternalServerErrorException('Failed to delete client');
     }
   }
@@ -163,18 +145,16 @@ export class ClientsService {
         agentId: client.agentId,
       };
     } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(
-          `Profile retrieval failed: ${error.message}`,
-          error.stack,
-        );
-      } else {
-        this.logger.error(
-          'Profile retrieval failed: Unknown error',
-          ''
-        );
-      }
+      this.logError('Profile retrieval', error);
       throw error;
+    }
+  }
+
+  private logError(method: string, error: unknown) {
+    if (error instanceof Error) {
+      this.logger.error(`${method} failed: ${error.message}`, error.stack);
+    } else {
+      this.logger.error(`${method} failed: Unknown error`, '');
     }
   }
 }

@@ -2,31 +2,52 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ClientsController } from './clients.controller';
 import { ClientsService } from './clients.service';
 import { AiService } from '../ai/ai.service';
-import { NotFoundException } from '@nestjs/common';
+import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 describe('ClientsController', () => {
   let controller: ClientsController;
   let clientsService: ClientsService;
   let aiService: AiService;
 
-  const mockClientsService = {
-    create: jest.fn(),
-    findAllByAgent: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  };
+  const mockUser = { id: 'agent-1' };
+  const mockReq = { user: mockUser };
 
-  const mockAiService = {
-    analyzeProfile: jest.fn(),
+  const sampleClient = {
+    id: 'client-1',
+    agentId: 'agent-1',
+    name: 'John Doe',
+    phone: '9999999999',
+    preferredLanguage: 'en',
+    goals: ['retirement'],
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ClientsController],
       providers: [
-        { provide: ClientsService, useValue: mockClientsService },
-        { provide: AiService, useValue: mockAiService },
+        {
+          provide: ClientsService,
+          useValue: {
+            create: jest.fn(),
+            findAllByAgent: jest.fn(),
+            findOne: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: AiService,
+          useValue: {
+            analyzeProfile: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -35,76 +56,263 @@ describe('ClientsController', () => {
     aiService = module.get<AiService>(AiService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
+  describe('create', () => {
+    it('should create a client successfully', async () => {
+      const dto: CreateClientDto = {
+        name: 'John Doe',
+        phone: '9999999999',
+        language: ''
+      };
 
-  it('should create a client', async () => {
-    const dto = {
-      name: 'John',
-      phone: '123',
-      language: 'en',
-      goals: [],
-    };
-    mockClientsService.create.mockResolvedValue({
-      id: '1',
-      ...dto,
-      agentId: 'agent-1',
+      (clientsService.create as jest.Mock).mockResolvedValue(sampleClient);
+      const result = await controller.create(dto, mockReq as any);
+      expect(result).toEqual(sampleClient);
+      expect(clientsService.create).toHaveBeenCalledWith(dto, mockUser.id);
     });
-    const result = await controller.create(dto, { user: { id: 'agent-1' } });
-    expect(result).toEqual({ id: '1', ...dto, agentId: 'agent-1' });
+
+    it('should throw BadRequestException on invalid input', async () => {
+      (clientsService.create as jest.Mock).mockRejectedValue(
+        new BadRequestException('Invalid input'),
+      );
+
+      await expect(
+        controller.create({} as any, mockReq as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw InternalServerErrorException on unexpected errors', async () => {
+      (clientsService.create as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(
+        controller.create({} as any, mockReq as any),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
   });
 
-  it('should get all clients for agent', async () => {
-    mockClientsService.findAllByAgent.mockResolvedValue([]);
-    const result = await controller.findAll({ user: { id: 'agent-1' } });
-    expect(result).toEqual([]);
+  describe('findAll', () => {
+    it('should return clients for authenticated agent', async () => {
+      const mockData = [sampleClient];
+      (clientsService.findAllByAgent as jest.Mock).mockResolvedValue(mockData);
+
+      const result = await controller.findAll(mockReq as any);
+      expect(result).toEqual(mockData);
+      expect(clientsService.findAllByAgent).toHaveBeenCalledWith(mockUser.id);
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      (clientsService.findAllByAgent as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(controller.findAll(mockReq as any)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should get one client', async () => {
-    const client = { id: '1', name: 'John' };
-    mockClientsService.findOne.mockResolvedValue(client);
-    const result = await controller.findOne('1');
-    expect(result).toEqual(client);
+  describe('findOne', () => {
+    it('should return client if owner matches', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue(sampleClient);
+      const result = await controller.findOne(sampleClient.id, mockReq as any);
+      expect(result).toEqual(sampleClient);
+    });
+
+    it('should throw ForbiddenException if not owner', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue({
+        ...sampleClient,
+        agentId: 'other-agent',
+      });
+
+      await expect(
+        controller.findOne(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw BadRequestException for invalid id', async () => {
+      await expect(
+        controller.findOne(null as any, mockReq as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should propagate NotFoundException', async () => {
+      (clientsService.findOne as jest.Mock).mockRejectedValue(
+        new NotFoundException('Not found'),
+      );
+
+      await expect(
+        controller.findOne(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw InternalServerErrorException on other errors', async () => {
+      (clientsService.findOne as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(
+        controller.findOne(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
   });
 
-  it('should update a client', async () => {
-    const dto = { name: 'Updated' };
-    const updated = { id: '1', ...dto };
-    mockClientsService.update.mockResolvedValue(updated);
-    const result = await controller.update('1', dto);
-    expect(result).toEqual(updated);
+  describe('update', () => {
+    const updateDto: UpdateClientDto = { name: 'Updated' };
+
+    it('should update client if owner matches', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue(sampleClient);
+      (clientsService.update as jest.Mock).mockResolvedValue({
+        ...sampleClient,
+        ...updateDto,
+      });
+
+      const result = await controller.update(
+        sampleClient.id,
+        updateDto,
+        mockReq as any,
+      );
+      expect(result).toEqual({ ...sampleClient, ...updateDto });
+    });
+
+    it('should throw ForbiddenException if not owner', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue({
+        ...sampleClient,
+        agentId: 'other-agent',
+      });
+
+      await expect(
+        controller.update(sampleClient.id, updateDto, mockReq as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw BadRequestException for invalid id', async () => {
+      await expect(
+        controller.update(null as any, updateDto, mockReq as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should propagate NotFoundException', async () => {
+      (clientsService.findOne as jest.Mock).mockRejectedValue(
+        new NotFoundException('Not found'),
+      );
+
+      await expect(
+        controller.update(sampleClient.id, updateDto, mockReq as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw InternalServerErrorException on other errors', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue(sampleClient);
+      (clientsService.update as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(
+        controller.update(sampleClient.id, updateDto, mockReq as any),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
   });
 
-  it('should remove a client', async () => {
-    const removed = { id: '1' };
-    mockClientsService.remove.mockResolvedValue(removed);
-    const result = await controller.remove('1');
-    expect(result).toEqual(removed);
+  describe('remove', () => {
+    it('should delete client if owner matches', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue(sampleClient);
+      (clientsService.remove as jest.Mock).mockResolvedValue({
+        id: sampleClient.id,
+      });
+
+      const result = await controller.remove(sampleClient.id, mockReq as any);
+      expect(result).toEqual({ id: sampleClient.id });
+    });
+
+    it('should throw ForbiddenException if not owner', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue({
+        ...sampleClient,
+        agentId: 'other-agent',
+      });
+
+      await expect(
+        controller.remove(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw BadRequestException for invalid id', async () => {
+      await expect(
+        controller.remove(null as any, mockReq as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should propagate NotFoundException', async () => {
+      (clientsService.findOne as jest.Mock).mockRejectedValue(
+        new NotFoundException('Not found'),
+      );
+
+      await expect(
+        controller.remove(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw InternalServerErrorException on other errors', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue(sampleClient);
+      (clientsService.remove as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(
+        controller.remove(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
   });
 
-  it('should return AI insights for a client', async () => {
-    const client = {
-      id: '1',
-      name: 'John',
-      phone: '123',
-      agentId: 'agent-1',
-      preferredLanguage: 'en',
-      goals: ['retirement'],
-    };
+  describe('getClientAiInsights', () => {
+    it('should return AI insights if owner matches', async () => {
+      const mockInsights = { summary: 'Good client' };
+      (clientsService.findOne as jest.Mock).mockResolvedValue(sampleClient);
+      (aiService.analyzeProfile as jest.Mock).mockResolvedValue(mockInsights);
 
-    const aiResponse = { insights: 'Mock AI result' };
-    mockClientsService.findOne.mockResolvedValue(client);
-    mockAiService.analyzeProfile.mockResolvedValue(aiResponse);
+      const result = await controller.getClientAiInsights(
+        sampleClient.id,
+        mockReq as any,
+      );
+      expect(result).toEqual(mockInsights);
+    });
 
-    const result = await controller.getClientAiInsights('1');
-    expect(result).toEqual(aiResponse);
-  });
+    it('should throw ForbiddenException if not owner', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue({
+        ...sampleClient,
+        agentId: 'other-agent',
+      });
 
-  it('should throw NotFoundException for non-existent client insights', async () => {
-    mockClientsService.findOne.mockResolvedValue(null);
-    await expect(controller.getClientAiInsights('999')).rejects.toThrow(
-      NotFoundException,
-    );
+      await expect(
+        controller.getClientAiInsights(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw BadRequestException for invalid id', async () => {
+      await expect(
+        controller.getClientAiInsights(null as any, mockReq as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should propagate NotFoundException', async () => {
+      (clientsService.findOne as jest.Mock).mockRejectedValue(
+        new NotFoundException('Not found'),
+      );
+
+      await expect(
+        controller.getClientAiInsights(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw InternalServerErrorException on other errors', async () => {
+      (clientsService.findOne as jest.Mock).mockResolvedValue(sampleClient);
+      (aiService.analyzeProfile as jest.Mock).mockRejectedValue(
+        new Error('AI error'),
+      );
+
+      await expect(
+        controller.getClientAiInsights(sampleClient.id, mockReq as any),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
   });
 });

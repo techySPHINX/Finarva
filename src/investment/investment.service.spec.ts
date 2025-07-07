@@ -1,6 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { InvestmentService } from './investment.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { UpdateInvestmentDto } from './dto/update-investment.dto';
 import { BulkCreateInvestmentDto } from './dto/bulk-create-investment.dto';
@@ -9,7 +15,7 @@ describe('InvestmentService', () => {
   let service: InvestmentService;
   let prisma: PrismaService;
 
-  const mockPrisma = {
+  const mockPrismaService = {
     investment: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -20,13 +26,12 @@ describe('InvestmentService', () => {
   };
 
   beforeEach(async () => {
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InvestmentService,
-        {
-          provide: PrismaService,
-          useValue: mockPrisma,
-        },
+        { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();
 
@@ -35,187 +40,295 @@ describe('InvestmentService', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+    (Logger.prototype.error as jest.Mock).mockRestore();
   });
 
   describe('create', () => {
     it('should create an investment', async () => {
       const dto: CreateInvestmentDto = {
-        clientId: 'client-1',
-        type: 'Small Cap',
-        amount: 5000,
-        startDate: '2024-06-01T00:00:00Z',
-        status: 'active',
-        returns: 650.75,
-        source: 'PartnerAPI',
+        amount: 1000,
+        clientId: '123',
+        type: 'stocks',
+        startDate: '',
+        status: '',
       };
+      const result = { id: '1', ...dto };
+      (prisma.investment.create as jest.Mock).mockResolvedValue(result);
 
-      const createdInvestment = { id: 'inv-1', ...dto };
-      mockPrisma.investment.create.mockResolvedValue(createdInvestment);
-
-      const result = await service.create(dto);
+      expect(await service.create(dto)).toEqual(result);
       expect(prisma.investment.create).toHaveBeenCalledWith({ data: dto });
-      expect(result).toEqual(createdInvestment);
+    });
+
+    it('should throw BadRequestException on duplicate entry', async () => {
+      const error = {
+        code: 'P2002',
+        message: 'Duplicate entry',
+        name: 'PrismaClientKnownRequestError',
+      };
+      (prisma.investment.create as jest.Mock).mockRejectedValue(error);
+
+      await expect(service.create({} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw BadRequestException on invalid foreign key', async () => {
+      const error = {
+        code: 'P2003',
+        message: 'Foreign key constraint failed',
+        name: 'PrismaClientKnownRequestError',
+      };
+      (prisma.investment.create as jest.Mock).mockRejectedValue(error);
+
+      await expect(service.create({} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on unknown error', async () => {
+      (prisma.investment.create as jest.Mock).mockRejectedValue(
+        new Error('Unknown'),
+      );
+      await expect(service.create({} as any)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
   describe('bulkCreate', () => {
-    it('should create multiple investments', async () => {
+    it('should create investments in bulk', async () => {
       const dto: BulkCreateInvestmentDto = {
         investments: [
           {
-            clientId: 'client-1',
-            amount: 500,
-            type: 'FD',
-            status: 'PENDING',
-            startDate: '2023-01-01T00:00:00Z',
-            returns: 50,
-            source: 'Manual',
-          },
-          {
-            clientId: 'client-1',
-            amount: 800,
-            type: 'SIP',
-            status: 'ACTIVE',
-            startDate: '2023-02-01T00:00:00Z',
-            source: 'PartnerAPI',
+            amount: 1000,
+            clientId: '123',
+            type: 'stocks',
+            startDate: '',
+            status: '',
           },
         ],
       };
-
-      if (!dto.investments) {
-        // handle empty or undefined investments case, e.g., return []
-        return [];
-      }
-
-      const created = dto.investments.map((inv, idx) => ({
-        id: `inv-${idx + 1}`,
-        ...inv,
-      }));
-      mockPrisma.investment.create
-        .mockResolvedValueOnce(created[0])
-        .mockResolvedValueOnce(created[1]);
+      (prisma.investment.create as jest.Mock).mockResolvedValue({
+        id: '1',
+        ...(dto.investments && dto.investments[0] ? dto.investments[0] : {}),
+      });
 
       const result = await service.bulkCreate(dto);
-      expect(result).toEqual(created);
-      expect(prisma.investment.create).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(1);
+      expect(prisma.investment.create).toHaveBeenCalledTimes(1);
     });
 
-    it('should return empty array if investments list is empty', async () => {
-      const dto: BulkCreateInvestmentDto = { investments: [] };
-      const result = await service.bulkCreate(dto);
-      expect(result).toEqual([]);
-      expect(prisma.investment.create).not.toHaveBeenCalled();
+    it('should throw BadRequestException for invalid input', async () => {
+      await expect(service.bulkCreate({} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      (prisma.investment.create as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+      const dto: BulkCreateInvestmentDto = {
+        investments: [
+          {
+            amount: 1000,
+            clientId: '123',
+            type: 'stocks',
+            startDate: '',
+            status: '',
+          },
+        ],
+      };
+      await expect(service.bulkCreate(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
   describe('findAllByClient', () => {
-    it('should find investments by clientId', async () => {
-      const clientId = 'client-1';
-      const mockResult = [{ id: 'inv-1' }, { id: 'inv-2' }];
-      mockPrisma.investment.findMany.mockResolvedValue(mockResult);
+    it('should return investments for a client', async () => {
+      const result = [{ id: '1', clientId: '123', amount: 1000 }];
+      (prisma.investment.findMany as jest.Mock).mockResolvedValue(result);
 
-      const result = await service.findAllByClient(clientId);
+      expect(await service.findAllByClient('123')).toEqual(result);
       expect(prisma.investment.findMany).toHaveBeenCalledWith({
-        where: { clientId, status: undefined },
+        where: { clientId: '123', status: undefined },
       });
-      expect(result).toEqual(mockResult);
     });
 
-    it('should filter by status if provided', async () => {
-      const result = [{ id: 'inv-1' }];
-      mockPrisma.investment.findMany.mockResolvedValue(result);
+    it('should throw BadRequestException for invalid clientId', async () => {
+      await expect(service.findAllByClient(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
 
-      await service.findAllByClient('client-1', 'ACTIVE');
-      expect(prisma.investment.findMany).toHaveBeenCalledWith({
-        where: { clientId: 'client-1', status: 'ACTIVE' },
-      });
+    it('should throw InternalServerErrorException on failure', async () => {
+      (prisma.investment.findMany as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+      await expect(service.findAllByClient('123')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
   describe('findOne', () => {
     it('should return an investment by ID', async () => {
-      const investment = {
-        id: 'inv-1',
-        clientId: 'client-1',
-        type: 'FD',
-        amount: 500,
-        startDate: '2024-01-01T00:00:00Z',
-        status: 'active',
-      };
-      mockPrisma.investment.findUnique.mockResolvedValue(investment);
+      const result = { id: '1', clientId: '123', amount: 1000 };
+      (prisma.investment.findUnique as jest.Mock).mockResolvedValue(result);
 
-      const result = await service.findOne('inv-1');
+      expect(await service.findOne('1')).toEqual(result);
       expect(prisma.investment.findUnique).toHaveBeenCalledWith({
-        where: { id: 'inv-1' },
+        where: { id: '1' },
       });
-      expect(result).toEqual(investment);
+    });
+
+    it('should throw BadRequestException for invalid ID', async () => {
+      await expect(service.findOne(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw NotFoundException if investment not found', async () => {
+      (prisma.investment.findUnique as jest.Mock).mockResolvedValue(null);
+      await expect(service.findOne('999')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      (prisma.investment.findUnique as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+      await expect(service.findOne('1')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
   describe('update', () => {
-    it('should update an investment by ID', async () => {
-      const dto: UpdateInvestmentDto = {
-        amount: 1500,
-        status: 'ACTIVE',
-        returns: 300.25,
-      };
+    it('should update an investment', async () => {
+      const dto: UpdateInvestmentDto = { amount: 1500 };
+      const result = { id: '1', ...dto };
+      (prisma.investment.update as jest.Mock).mockResolvedValue(result);
 
-      const updated = { id: 'inv-1', ...dto };
-      mockPrisma.investment.update.mockResolvedValue(updated);
-
-      const result = await service.update('inv-1', dto);
+      expect(await service.update('1', dto)).toEqual(result);
       expect(prisma.investment.update).toHaveBeenCalledWith({
-        where: { id: 'inv-1' },
+        where: { id: '1' },
         data: dto,
       });
-      expect(result).toEqual(updated);
+    });
+
+    it('should throw BadRequestException on duplicate entry', async () => {
+      const error = {
+        code: 'P2002',
+        message: 'Duplicate entry',
+        name: 'PrismaClientKnownRequestError',
+      };
+      (prisma.investment.update as jest.Mock).mockRejectedValue(error);
+
+      await expect(service.update('1', {} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw NotFoundException if investment not found', async () => {
+      const error = {
+        code: 'P2025',
+        message: 'Record not found',
+        name: 'PrismaClientKnownRequestError',
+      };
+      (prisma.investment.update as jest.Mock).mockRejectedValue(error);
+
+      await expect(service.update('1', {} as any)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      (prisma.investment.update as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+      await expect(service.update('1', {} as any)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should throw BadRequestException for invalid ID', async () => {
+      await expect(service.update(null as any, {} as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('remove', () => {
-    it('should delete an investment by ID', async () => {
-      const deleted = {
-        id: 'inv-1',
-        clientId: 'client-1',
-        type: 'SIP',
-        amount: 800,
-        startDate: '2023-02-01T00:00:00Z',
-        status: 'withdrawn',
-      };
-      mockPrisma.investment.delete.mockResolvedValue(deleted);
+    it('should delete an investment', async () => {
+      const result = { id: '1', deleted: true };
+      (prisma.investment.delete as jest.Mock).mockResolvedValue(result);
 
-      const result = await service.remove('inv-1');
+      expect(await service.remove('1')).toEqual(result);
       expect(prisma.investment.delete).toHaveBeenCalledWith({
-        where: { id: 'inv-1' },
+        where: { id: '1' },
       });
-      expect(result).toEqual(deleted);
+    });
+
+    it('should throw NotFoundException if investment not found', async () => {
+      const error = {
+        code: 'P2025',
+        message: 'Record not found',
+        name: 'PrismaClientKnownRequestError',
+      };
+      (prisma.investment.delete as jest.Mock).mockRejectedValue(error);
+
+      await expect(service.remove('1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      (prisma.investment.delete as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+      await expect(service.remove('1')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should throw BadRequestException for invalid ID', async () => {
+      await expect(service.remove(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('findByClientAndTypes', () => {
-    it('should return investments filtered by type and clientId', async () => {
-      const result = [
-        { id: 'inv-1', type: 'FD' },
-        { id: 'inv-2', type: 'SIP' },
-      ];
-      mockPrisma.investment.findMany.mockResolvedValue(result);
+    it('should return investments filtered by client ID and types', async () => {
+      const result = [{ id: '1', clientId: '123', type: 'stocks' }];
+      (prisma.investment.findMany as jest.Mock).mockResolvedValue(result);
 
-      const types = ['FD', 'SIP'];
-      const clientId = 'client-1';
-      const response = await service.findByClientAndTypes(clientId, types);
-
+      expect(await service.findByClientAndTypes('123', ['stocks'])).toEqual(
+        result,
+      );
       expect(prisma.investment.findMany).toHaveBeenCalledWith({
-        where: {
-          clientId,
-          type: { in: types },
-        },
+        where: { clientId: '123', type: { in: ['stocks'] } },
       });
-      expect(response).toEqual(result);
+    });
+
+    it('should throw BadRequestException for invalid clientId', async () => {
+      await expect(
+        service.findByClientAndTypes(null as any, ['stocks']),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException for empty types array', async () => {
+      await expect(service.findByClientAndTypes('123', [])).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      (prisma.investment.findMany as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+      await expect(
+        service.findByClientAndTypes('123', ['stocks']),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

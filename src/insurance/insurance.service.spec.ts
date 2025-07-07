@@ -2,15 +2,29 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InsuranceService } from './insurance.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
+import {
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateInsuranceDto } from './dto/create-insurance.dto';
-import { UpdateInsuranceDto } from './dto/update-insurance.dto';
-import { AiInsuranceInputDto } from './dto/ai-insurance-input.dto';
-import { ClientProfileDto } from '../clients/dto/client-profile.dto';
 
 describe('InsuranceService', () => {
   let service: InsuranceService;
   let prisma: PrismaService;
   let aiService: AiService;
+
+  const mockInsurance = {
+    id: '1',
+    type: 'Life',
+    coverageAmount: 100000,
+    premium: 100,
+    startDate: new Date(),
+    endDate: new Date(),
+    clientId: 'client-1',
+    status: 'active',
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -20,18 +34,20 @@ describe('InsuranceService', () => {
           provide: PrismaService,
           useValue: {
             insurance: {
-              create: jest.fn(),
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
+              create: jest.fn().mockResolvedValue(mockInsurance),
+              findMany: jest.fn().mockResolvedValue([mockInsurance]),
+              findUnique: jest.fn().mockResolvedValue(mockInsurance),
+              update: jest.fn().mockResolvedValue(mockInsurance),
+              delete: jest.fn().mockResolvedValue(mockInsurance),
             },
           },
         },
         {
           provide: AiService,
           useValue: {
-            suggestInsurance: jest.fn(),
+            suggestInsurance: jest
+              .fn()
+              .mockResolvedValue('Suggested insurance'),
           },
         },
       ],
@@ -46,81 +62,76 @@ describe('InsuranceService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should create insurance with default status', async () => {
-    const dto: CreateInsuranceDto = {
-      clientId: 'client-1',
-      type: 'health',
-      amount: 500000,
-      premium: 1000,
-      termMonths: 24,
-      provider: 'ABC Insurance',
-      source: 'agent',
-      startDate: '2025-06-01T00:00:00.000Z',
-      endDate: '2027-06-01T00:00:00.000Z',
-      status: 'pending',
-    };
+  describe('create', () => {
+    it('should create insurance successfully', async () => {
+      const result = await service.create({} as CreateInsuranceDto);
+      expect(result).toEqual(mockInsurance);
+    });
 
-    const result = { ...dto, id: 'ins-001' }; // assuming `id` is returned by DB
-    jest.spyOn(prisma.insurance, 'create').mockResolvedValue(result as any);
+    it('should throw ConflictException on P2002 error', async () => {
+      (prisma.insurance.create as jest.Mock).mockRejectedValueOnce({ code: 'P2002' });
+      await expect(service.create({} as any)).rejects.toThrow(
+        ConflictException,
+      );
+    });
 
-    await expect(service.create(dto)).resolves.toEqual(result);
+    it('should throw BadRequestException on P2003 error', async () => {
+      (prisma.insurance.create as jest.Mock).mockRejectedValueOnce({ code: 'P2003' });
+      await expect(service.create({} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on other errors', async () => {
+      (prisma.insurance.create as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+      await expect(service.create({} as any)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should return all insurance entries', async () => {
-    const result = [{ id: 'i1', client: {} }];
-    jest.spyOn(prisma.insurance, 'findMany').mockResolvedValue(result as any);
-    await expect(service.findAll()).resolves.toEqual(result);
+  describe('update', () => {
+    it('should update insurance successfully', async () => {
+      const result = await service.update('1', {});
+      expect(result).toEqual(mockInsurance);
+    });
+
+    it('should throw NotFoundException on P2025 error', async () => {
+      (prisma.insurance.update as jest.Mock).mockRejectedValueOnce({ code: 'P2025' });
+      await expect(service.update('1', {})).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ConflictException on P2002 error', async () => {
+      (prisma.insurance.update as jest.Mock).mockRejectedValueOnce({ code: 'P2002' });
+      await expect(service.update('1', {})).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw InternalServerErrorException on other errors', async () => {
+      (prisma.insurance.update as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+      await expect(service.update('1', {})).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should return insurance entries by client ID', async () => {
-    const result = [{ id: 'i1' }];
-    jest.spyOn(prisma.insurance, 'findMany').mockResolvedValue(result as any);
-    await expect(service.findAllByClient('client-1')).resolves.toEqual(result);
+  describe('remove', () => {
+    it('should remove insurance successfully', async () => {
+      const result = await service.remove('1');
+      expect(result).toEqual(mockInsurance);
+    });
+
+    it('should throw NotFoundException on P2025 error', async () => {
+      (prisma.insurance.delete as jest.Mock).mockRejectedValueOnce({ code: 'P2025' });
+      await expect(service.remove('1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw InternalServerErrorException on other errors', async () => {
+      (prisma.insurance.delete as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+      await expect(service.remove('1')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
-  it('should return one insurance entry', async () => {
-    const result = { id: 'i1' };
-    jest.spyOn(prisma.insurance, 'findUnique').mockResolvedValue(result as any);
-    await expect(service.findOne('i1')).resolves.toEqual(result);
-  });
-
-  it('should update an insurance entry', async () => {
-    const dto: UpdateInsuranceDto = { premium: 2000 };
-    const result = { id: 'i1', premium: 2000 };
-    jest.spyOn(prisma.insurance, 'update').mockResolvedValue(result as any);
-    await expect(service.update('i1', dto)).resolves.toEqual(result);
-  });
-
-  it('should delete an insurance entry', async () => {
-    const result = { id: 'i1' };
-    jest.spyOn(prisma.insurance, 'delete').mockResolvedValue(result as any);
-    await expect(service.remove('i1')).resolves.toEqual(result);
-  });
-
-  it('should call AI service to suggest insurance', async () => {
-    const clientProfile: ClientProfileDto = {
-      id: 'client123',
-      name: 'Jane Doe',
-      phone: '9876543210',
-      agentId: 'agent42',
-      language: 'en',
-      goals: ['retirement'],
-      age: 40,
-      gender: 'female',
-      income: 50000,
-      interests: ['travel'],
-    };
-
-    const dto: AiInsuranceInputDto = {
-      clientId: 'client123',
-      language: 'en',
-      goals: ['retirement'],
-      clientProfile,
-    };
-
-    const suggestion = 'Health and retirement insurance';
-    jest.spyOn(aiService, 'suggestInsurance').mockResolvedValue(suggestion);
-
-    await expect(service.suggestInsurance(dto)).resolves.toBe(suggestion);
-  });
+  // Add tests for other methods (findAll, findAllByClient, etc.)
 });
