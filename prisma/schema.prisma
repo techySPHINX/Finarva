@@ -166,3 +166,11 @@ model AIRecommendation {
   createdAt     DateTime @default(now())
   client        Client   @relation(fields: [clientId], references: [id])
 }
+
+model MerchantAssistant {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  merchantId  String   // Assuming a merchant ID for linking
+  query       String
+  response    String
+  timestamp   DateTime @default(now())
+}

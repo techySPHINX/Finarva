@@ -2,10 +2,8 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// Core Modules
 import { PrismaModule } from './prisma/prisma.module';
 
-// Feature Modules
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { InsuranceModule } from './insurance/insurance.module';
@@ -13,17 +11,13 @@ import { InvestmentModule } from './investment/investment.module';
 import { LearningModule } from './learning/learning.module';
 import { QuizModule } from './quiz/quiz.module';
 
-// AI Modules
 import { AiModule } from './ai/ai.module';
-// import { ChatbotModule } from './ai/chatbot/chatbot.module';
-// import { FinancialHealthModule } from './ai/financial-health/financial-health.module';
+import { MerchantAssistantModule } from './merchant-assistant/merchant-assistant.module';
 
 @Module({
   imports: [
-    // Infrastructure
     PrismaModule,
 
-    // Domain Modules
     AuthModule,
     ClientsModule,
     InsuranceModule,
@@ -31,8 +25,8 @@ import { AiModule } from './ai/ai.module';
     LearningModule,
     QuizModule,
 
-    // AI Modules
     AiModule,
+    MerchantAssistantModule,
   ],
   controllers: [AppController],
   providers: [AppService],

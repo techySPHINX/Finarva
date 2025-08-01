@@ -13,11 +13,13 @@ import { ClientProfileDto } from '../clients/dto/client-profile.dto';
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly apiKey: string;
-  private readonly endpoint: string;
+  private readonly textGenerationEndpoint: string;
+  private readonly embeddingEndpoint: string;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || '';
-    this.endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+    this.textGenerationEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+    this.embeddingEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent`;
 
     if (!this.apiKey) {
       this.logger.error('GEMINI_API_KEY environment variable not set');
@@ -25,7 +27,7 @@ export class AiService {
     }
   }
 
-  private async callGeminiApi(
+  async callGeminiApi(
     prompt: string,
     maxTokens = 300,
   ): Promise<string> {
@@ -35,7 +37,7 @@ export class AiService {
 
     try {
       const response = await axios.post(
-        `${this.endpoint}?key=${this.apiKey}`,
+        `${this.textGenerationEndpoint}?key=${this.apiKey}`,
         {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { maxOutputTokens: maxTokens },
@@ -76,6 +78,49 @@ export class AiService {
       }
 
       this.logger.error(`${errorMessage} | Prompt: ${prompt}`, err.stack);
+      throw new HttpException(errorMessage, statusCode);
+    }
+  }
+
+  async generateEmbedding(text: string): Promise<number[]> {
+    if (!text || text.trim().length === 0) {
+      throw new BadRequestException('Text for embedding cannot be empty');
+    }
+
+    try {
+      const response = await axios.post(
+        `${this.embeddingEndpoint}?key=${this.apiKey}`,
+        {
+          model: "embedding-001",
+          content: { parts: [{ text: text }] },
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000,
+        },
+      );
+
+      const embedding = response.data?.embedding?.values;
+      if (!embedding) {
+        this.logger.warn('Gemini Embedding API returned no embedding values');
+        throw new InternalServerErrorException('Failed to generate embedding');
+      }
+      return embedding;
+    } catch (error: unknown) {
+      const err = error as AxiosError<{ error?: { message?: string } }>;
+      let errorMessage = 'Embedding generation failed';
+      let statusCode = HttpStatus.BAD_GATEWAY;
+
+      if (err.response) {
+        errorMessage = `Gemini Embedding API error: ${err.response.status} - ${err.response.data?.error?.message || 'No error details'}`;
+        statusCode = err.response.status;
+      } else if (err.request) {
+        errorMessage = 'Gemini Embedding API request timed out or failed';
+      } else {
+        errorMessage = `Gemini Embedding API configuration error: ${err.message}`;
+      }
+
+      this.logger.error(`${errorMessage} | Text: ${text}`, err.stack);
       throw new HttpException(errorMessage, statusCode);
     }
   }

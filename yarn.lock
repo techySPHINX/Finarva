@@ -1127,6 +1127,11 @@
   dependencies:
     "@noble/hashes" "^1.1.5"
 
+"@pinecone-database/pinecone@^6.1.2":
+  version "6.1.2"
+  resolved "https://registry.npmjs.org/@pinecone-database/pinecone/-/pinecone-6.1.2.tgz"
+  integrity sha512-ydIlbtgIIHFgBL08sPzua5ckmOgtjgDz8xg21CnP1fqnnEgDmOlnfd10MRKU+fvFRhDlh4Md37SwZDr0d4cBqg==
+
 "@pkgr/core@^0.2.4":
   version "0.2.7"
   resolved "https://registry.npmjs.org/@pkgr/core/-/core-0.2.7.tgz"
