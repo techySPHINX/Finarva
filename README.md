@@ -1,26 +1,31 @@
-# 🧠 Finarva AI Backend – Empowering Microentrepreneurs with Intelligence
+# 🚀 Finarva AI Backend: The Financial OS for Microentrepreneurs
 
 ![NestJS](https://img.shields.io/badge/NestJS-Powered-red?style=for-the-badge&logo=nestjs)
-![MongoDB](https://img.shields.io/badge/MongoDB-Database-green?style=for-the-badge&logo=mongodb)
-![Prisma](https://img.shields.io/badge/ORM-Prisma-blue?style=for-the-badge&logo=prisma)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue?style=for-the-badge&logo=postgresql)
+![Prisma](https://img.shields.io/badge/ORM-Prisma-lightgrey?style=for-the-badge&logo=prisma)
 ![OpenAI](https://img.shields.io/badge/AI-OpenAI-4B0082?style=for-the-badge&logo=openai)
 ![Gemini](https://img.shields.io/badge/AI-Gemini-black?style=for-the-badge&logo=google)
 ![Swagger](https://img.shields.io/badge/API-Docs-yellow?style=for-the-badge&logo=swagger)
 
-> ✨ A powerful NestJS backend for the **Gromo Platform**, enabling AI-driven quiz generation, investment advice, insurance suggestions, and personalized learning for India's microentrepreneurs.
+> ✨ **Finarva AI Backend** is a robust and scalable platform built with NestJS, PostgreSQL, and Prisma, designed to empower microentrepreneurs with intelligent financial and operational tools.
 
 ---
 
-## 🌟 Features
+## 🌟 Core Features
 
-- 👤 **Client Management** – Manage detailed client profiles and preferences
-- 🧠 **AI-Generated Quiz Suggestions** – Personalized quiz generation using Gemini/OpenAI
-- 📚 **Smart Learning Recommendations** – Recommend relevant content based on behavior
-- 📈 **Investment Engine** – Assist with small-cap, gold, equity investments & more
-- 🛡️ **Insurance Advisory** – Intelligent suggestions based on client background
-- 🌍 **Multi-language Support** – Serve localized content to clients in their native languages
-- 🧩 **Modular & Scalable** – Built using a clean, service-repository pattern
-- 🧪 **Swagger API Docs** – Auto-generated, interactive API documentation
+- 🤖 **AI Merchant Assistant**: Utilizes LLMs, RAG, and Pinecone DB to offer dynamic, context-aware guidance that streamlines business operations, boosts topline growth, and helps merchants adhere to marketplace best practices.
+- 💡 **AI-Powered Financial Advisory**: Delivers personalized investment and insurance advice, driven by OpenAI GPT-4 and Gemini Pro models.
+- 📊 **Expense Tracking & Management**: Helps microentrepreneurs manage their business finances effectively.
+- 🌊 **Cash Flow Analysis & Forecasting**: Provides insights into cash flow and predicts future financial health.
+- 💰 **Micro-loan & Credit Facilitation**: Connects entrepreneurs with potential funding opportunities.
+- 📦 **Supply Chain Management**: Helps businesses track their inventory and manage their supply chain.
+- 📈 **Business Analytics & Reporting**: Offers a consolidated view of business performance.
+- 🧠 **Personalized, Multilingual Quizzes**: Engages users with tailored quizzes in their native language.
+- 👤 **Client Management**: Manages detailed client profiles and preferences.
+- 📚 **Smart Learning Recommendations**: Recommends relevant content based on user behavior.
+- 🌍 **Multi-language Support**: Serves localized content to clients in their native languages.
+- 🧩 **Modular & Scalable**: Built using a clean, service-repository pattern.
+- 🧪 **Swagger API Docs**: Auto-generated, interactive API documentation.
 
 ---
 
@@ -29,8 +34,9 @@
 | Layer         | Technology                                                                          |
 | ------------- | ----------------------------------------------------------------------------------- |
 | Backend       | [NestJS](https://nestjs.com/)                                                       |
-| Database      | [MongoDB](https://www.mongodb.com/) + [Prisma](https://www.prisma.io/)              |
+| Database      | [PostgreSQL](https://www.postgresql.org/) + [Prisma](https://www.prisma.io/)        |
 | AI Models     | [OpenAI GPT-4](https://platform.openai.com/) / [Gemini Pro](https://ai.google.dev/) |
+| Vector DB     | [Pinecone](https://www.pinecone.io/)                                                |
 | Documentation | Swagger + class-validator                                                           |
 | Deployment    | Ready for Docker / CI-CD Pipelines                                                  |
 
@@ -41,13 +47,20 @@
 ```
 📦 src
 ├── ai                # AI Integration layer (Gemini/OpenAI)
-├── client            # Client module (profile, preferences)
-├── quiz              # Quiz suggestion, history & records
-├── investment        # Investments & recommendations
+├── auth              # Authentication and authorization
+├── cash-flow         # Cash flow analysis and forecasting
+├── clients           # Client module (profile, preferences)
+├── expenses          # Expense tracking and management
 ├── insurance         # Insurance suggestion logic
+├── inventory         # Inventory and supply chain management
+├── investment        # Investments & recommendations
 ├── learning          # Content learning logic
-├── common            # DTOs, interceptors, validators
-└── prisma            # Prisma schema & database setup
+├── loans             # Micro-loan and credit facilitation
+├── merchant-assistant# AI-powered merchant assistant
+├── prisma            # Prisma schema & database setup
+├── quiz              # Quiz suggestion, history & records
+├── reporting         # Business analytics and reporting
+└── vector-store      # Pinecone vector store integration
 ```
 
 ---
@@ -57,15 +70,16 @@
 ### ✅ Prerequisites
 
 - Node.js v18+
-- MongoDB (Local or Atlas)
+- PostgreSQL (Local or Docker)
 - Prisma CLI
 - OpenAI / Gemini API Key
+- Pinecone API Key
 
 ### 📦 Installation
 
 ```bash
-git clone https://github.com/techySPHINX/Finarva
-cd Finarva
+git clone https://github.com/your-username/finarva-ai-backend
+cd finarva-ai-backend
 npm install
 ```
 
@@ -76,9 +90,10 @@ npm install
 Create a `.env` file in the root with the following content:
 
 ```env
-DATABASE_URL=mongodb://localhost:27017/gromo
+DATABASE_URL="postgresql://user:password@localhost:5432/finarva"
 OPENAI_API_KEY=sk-xxx
 GEMINI_API_KEY=your-gemini-key
+PINECONE_API_KEY=your-pinecone-key
 ```
 
 ---
@@ -87,6 +102,7 @@ GEMINI_API_KEY=your-gemini-key
 
 ```bash
 npx prisma generate
+npx prisma db push
 ```
 
 ---
@@ -111,71 +127,12 @@ Explore all endpoints, test requests, and view schemas.
 
 ---
 
-## 🤖 AI Integration Highlights
-
-- Uses **client profile**, **quiz history**, and **language** to generate:
-  - 📊 **Quiz Suggestions**
-  - 📚 **Content Recommendations**
-  - 🛡️ **Investment & Insurance Advice**
-
-> Easily switch between **OpenAI** and **Gemini** via `AiService`.
-
----
-
-## 📤 Sample Payloads
-
-### 🎯 Quiz Suggestion Request
-
-```json
-POST /ai/quiz-suggestions
-
-{
-  "profile": {
-    "name": "Ravi",
-    "age": 32,
-    "occupation": "Street Vendor",
-    "interests": ["insurance", "savings"],
-    "investmentExperience": "beginner"
-  },
-  "quizHistory": [],
-  "language": "hi"
-}
-```
-
----
-
-### 📚 Learning Content Suggestion
-
-```json
-POST /ai/learning-suggestions
-
-{
-  "profile": {
-    "age": 28,
-    "occupation": "Tailor",
-    "investmentExperience": "beginner"
-  },
-  "interests": ["mutual funds", "budgeting"]
-}
-```
-
----
-
 ## 🧪 Testing & Linting
 
 ```bash
 npm run lint        # Run linter
 npm run test        # Run unit tests
 ```
-
----
-
-## 💡 Developer Tips
-
-- Use `@nestjs/swagger` decorators to auto-generate docs
-- DTOs are validated with `class-validator`
-- Prisma handles MongoDB integration with schema enforcement
-- Modular folders make future extension a breeze
 
 ---
 
@@ -187,25 +144,8 @@ This project is licensed under the **MIT License**.
 
 ## 🤝 Contributing
 
-We welcome contributions!
-
-```bash
-# Clone and create a new branch
-git checkout -b feature/your-feature-name
-
-# Make changes, then commit
-git commit -m "feat: added investment insight AI"
-
-# Push and open a PR 🚀
-git push origin feature/your-feature-name
-```
+We welcome contributions! Please follow the standard GitHub flow: fork, branch, commit, and pull request.
 
 ---
 
-## 👨‍💻 Maintainer
-
-Made with ❤️ by [Jagan Kumar Hotta](https://github.com/techySPHINX)
-
----
-
-> 🚀 _Powering the next generation of microentrepreneurs through intelligence._
+> 🚀 _Empowering the next generation of microentrepreneurs through intelligence._

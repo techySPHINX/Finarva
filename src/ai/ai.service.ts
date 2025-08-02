@@ -241,4 +241,21 @@ export class AiService {
       throw new InternalServerErrorException('Comprehensive analysis failed');
     }
   }
+
+  async generateFinancialAdvice(financialData: any): Promise<string> {
+    if (!financialData || Object.keys(financialData).length === 0) {
+      throw new BadRequestException('Invalid financial data');
+    }
+
+    try {
+      const prompt = `Based on the following financial data, provide personalized advice for a microentrepreneur:\n${JSON.stringify(financialData)}`;
+      return await this.callGeminiApi(prompt, 500);
+    } catch (error) {
+      this.logger.error(
+        `Financial advice generation failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    }
+  }
 }

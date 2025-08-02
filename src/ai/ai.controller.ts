@@ -194,4 +194,35 @@ export class AiController {
       );
     }
   }
+
+  @Post('financial-advice')
+  @ApiOperation({ summary: 'Generate financial advice based on user data' })
+  @ApiBody({ type: Object }) // Replace with a specific DTO
+  @ApiResponse({ status: 200, description: 'Financial advice generated' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 502, description: 'AI service unavailable' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async generateFinancialAdvice(@Body() financialData: any): Promise<string> {
+    try {
+      if (!financialData) {
+        throw new BadRequestException('Financial data is required');
+      }
+      return await this.aiService.generateFinancialAdvice(financialData);
+    } catch (error) {
+      if (error instanceof Error) {
+        this.logger.error(
+          `Financial advice failed: ${error.message}`,
+          error.stack,
+        );
+      } else {
+        this.logger.error('Financial advice failed: Unknown error', String(error));
+      }
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to generate financial advice',
+      );
+    }
+  }
 }

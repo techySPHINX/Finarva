@@ -167,6 +167,7 @@ model AIRecommendation {
   client        Client   @relation(fields: [clientId], references: [id])
 }
 
+
 model MerchantAssistant {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   merchantId  String   // Assuming a merchant ID for linking
@@ -174,3 +175,37 @@ model MerchantAssistant {
   response    String
   timestamp   DateTime @default(now())
 }
+
+model Expense {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  category    String
+  amount      Float
+  date        DateTime
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Loan {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  amount       Float
+  interestRate Float
+  term         Int
+  startDate    DateTime
+  status       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model InventoryItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  name      String
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

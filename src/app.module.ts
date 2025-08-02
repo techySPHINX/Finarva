@@ -13,6 +13,11 @@ import { QuizModule } from './quiz/quiz.module';
 
 import { AiModule } from './ai/ai.module';
 import { MerchantAssistantModule } from './merchant-assistant/merchant-assistant.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { CashFlowModule } from './cash-flow/cash-flow.module';
+import { LoansModule } from './loans/loans.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { ReportingModule } from './reporting/reporting.module';
 
 @Module({
   imports: [
@@ -27,6 +32,11 @@ import { MerchantAssistantModule } from './merchant-assistant/merchant-assistant
 
     AiModule,
     MerchantAssistantModule,
+    ExpensesModule,
+    CashFlowModule,
+    LoansModule,
+    InventoryModule,
+    ReportingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
