@@ -33,12 +33,18 @@ describe('InsuranceService', () => {
         {
           provide: PrismaService,
           useValue: {
-            insurance: {
-              create: jest.fn().mockResolvedValue(mockInsurance),
-              findMany: jest.fn().mockResolvedValue([mockInsurance]),
-              findUnique: jest.fn().mockResolvedValue(mockInsurance),
-              update: jest.fn().mockResolvedValue(mockInsurance),
-              delete: jest.fn().mockResolvedValue(mockInsurance),
+            primary: {
+              insurance: {
+                create: jest.fn().mockResolvedValue(mockInsurance),
+                update: jest.fn().mockResolvedValue(mockInsurance),
+                delete: jest.fn().mockResolvedValue(mockInsurance),
+              },
+            },
+            readReplica: {
+              insurance: {
+                findMany: jest.fn().mockResolvedValue([mockInsurance]),
+                findUnique: jest.fn().mockResolvedValue(mockInsurance),
+              },
             },
           },
         },
@@ -69,21 +75,21 @@ describe('InsuranceService', () => {
     });
 
     it('should throw ConflictException on P2002 error', async () => {
-      (prisma.insurance.create as jest.Mock).mockRejectedValueOnce({ code: 'P2002' });
+      (prisma.primary.insurance.create as jest.Mock).mockRejectedValueOnce({ code: 'P2002' });
       await expect(service.create({} as any)).rejects.toThrow(
         ConflictException,
       );
     });
 
     it('should throw BadRequestException on P2003 error', async () => {
-      (prisma.insurance.create as jest.Mock).mockRejectedValueOnce({ code: 'P2003' });
+      (prisma.primary.insurance.create as jest.Mock).mockRejectedValueOnce({ code: 'P2003' });
       await expect(service.create({} as any)).rejects.toThrow(
         BadRequestException,
       );
     });
 
     it('should throw InternalServerErrorException on other errors', async () => {
-      (prisma.insurance.create as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+      (prisma.primary.insurance.create as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
       await expect(service.create({} as any)).rejects.toThrow(
         InternalServerErrorException,
       );
@@ -97,17 +103,17 @@ describe('InsuranceService', () => {
     });
 
     it('should throw NotFoundException on P2025 error', async () => {
-      (prisma.insurance.update as jest.Mock).mockRejectedValueOnce({ code: 'P2025' });
+      (prisma.primary.insurance.update as jest.Mock).mockRejectedValueOnce({ code: 'P2025' });
       await expect(service.update('1', {})).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ConflictException on P2002 error', async () => {
-      (prisma.insurance.update as jest.Mock).mockRejectedValueOnce({ code: 'P2002' });
+      (prisma.primary.insurance.update as jest.Mock).mockRejectedValueOnce({ code: 'P2002' });
       await expect(service.update('1', {})).rejects.toThrow(ConflictException);
     });
 
     it('should throw InternalServerErrorException on other errors', async () => {
-      (prisma.insurance.update as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+      (prisma.primary.insurance.update as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
       await expect(service.update('1', {})).rejects.toThrow(
         InternalServerErrorException,
       );
@@ -121,12 +127,12 @@ describe('InsuranceService', () => {
     });
 
     it('should throw NotFoundException on P2025 error', async () => {
-      (prisma.insurance.delete as jest.Mock).mockRejectedValueOnce({ code: 'P2025' });
+      (prisma.primary.insurance.delete as jest.Mock).mockRejectedValueOnce({ code: 'P2025' });
       await expect(service.remove('1')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw InternalServerErrorException on other errors', async () => {
-      (prisma.insurance.delete as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+      (prisma.primary.insurance.delete as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
       await expect(service.remove('1')).rejects.toThrow(
         InternalServerErrorException,
       );

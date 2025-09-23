@@ -8,7 +8,7 @@ export class VectorStoreService implements OnModuleInit {
   private pinecone!: Pinecone;
   private pineconeIndex!: Index;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async onModuleInit() {
     try {
@@ -31,13 +31,12 @@ export class VectorStoreService implements OnModuleInit {
         throw new Error('PINECONE_INDEX_NAME environment variable not set.');
       }
 
-      // Check if the index exists, and create it if it doesn't
       const describeIndex = await this.pinecone.describeIndex(indexName);
       if (!describeIndex) {
         this.logger.log(`Pinecone index '${indexName}' not found. Creating...`);
         await this.pinecone.createIndex({
           name: indexName,
-          dimension: 768, 
+          dimension: 768,
           metric: 'cosine',
           spec: {
             serverless: {
@@ -105,7 +104,7 @@ export class VectorStoreService implements OnModuleInit {
         return [];
       }
 
-      const interactions = await this.prisma.merchantAssistant.findMany({
+      const interactions = await this.prisma.primary.merchantAssistant.findMany({
         where: {
           id: {
             in: matchedIds,

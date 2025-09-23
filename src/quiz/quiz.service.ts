@@ -11,14 +11,14 @@ import { AddQuestionDto } from './dto/add-question.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { AiService } from '../ai/ai.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, Quiz } from '@prisma/client';
 
 @Injectable()
 export class QuizService {
   private readonly logger = new Logger(QuizService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private prismaService: PrismaService,
     private aiService: AiService,
   ) {}
 
@@ -28,7 +28,7 @@ export class QuizService {
     }
 
     try {
-      return await this.prisma.quiz.create({
+      return await this.prismaService.primary.quiz.create({
         data: {
           ...dto,
           description: dto.description ?? '',
@@ -53,14 +53,14 @@ export class QuizService {
     }
 
     try {
-      const quiz = await this.prisma.quiz.findUnique({
+      const quiz = await this.prismaService.readReplica.quiz.findUnique({
         where: { id: dto.quizId },
       });
       if (!quiz) {
         throw new NotFoundException('Quiz not found');
       }
 
-      return await this.prisma.question.create({
+      return await this.prismaService.primary.question.create({
         data: {
           quizId: dto.quizId,
           question: dto.question,
@@ -86,24 +86,36 @@ export class QuizService {
     tags?: string[],
     page = 1,
     limit = 10,
-  ) {
+  ): Promise<{ data: Quiz[], total: number, page: number, limit: number }> { // Added return type
     const skip = (page - 1) * limit;
 
     try {
-      return await this.prisma.quiz.findMany({
-        where: {
-          language,
-          tags: tags && tags.length > 0 ? { hasSome: tags } : undefined,
-        },
-        include: {
-          questions: true,
-        },
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      const whereClause = {
+        language,
+        tags: tags && tags.length > 0 ? { hasSome: tags } : undefined,
+      };
+
+      const [quizzes, total] = await this.prismaService.readReplica.$transaction([
+        this.prismaService.readReplica.quiz.findMany({
+          where: whereClause,
+          include: {
+            questions: true,
+          },
+          skip,
+          take: limit,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
+        this.prismaService.readReplica.quiz.count({ where: whereClause }),
+      ]);
+
+      return {
+        data: quizzes,
+        total,
+        page,
+        limit,
+      };
     } catch (error) {
       this.logger.error(
         `Get all quizzes failed: ${(error as any)?.message}`,
@@ -119,7 +131,7 @@ export class QuizService {
     }
 
     try {
-      const quiz = await this.prisma.quiz.findUnique({
+      const quiz = await this.prismaService.readReplica.quiz.findUnique({
         where: { id },
         include: { questions: true },
       });
@@ -141,13 +153,42 @@ export class QuizService {
     }
   }
 
+  // New method to consistently read from the primary database
+  async getQuizByIdConsistent(id: string) {
+    if (!id || typeof id !== 'string') {
+      throw new BadRequestException('Invalid quiz ID format');
+    }
+
+    try {
+      const quiz = await this.prismaService.primary.quiz.findUnique({
+        where: { id },
+        include: { questions: true },
+      });
+
+      if (!quiz) {
+        throw new NotFoundException(`Quiz with id ${id} not found on primary`);
+      }
+
+      return quiz;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(
+        `Get quiz by ID from primary failed: ${(error as any)?.message}`,
+        (error as any)?.stack,
+      );
+      throw new InternalServerErrorException('Failed to retrieve quiz from primary');
+    }
+  }
+
   async updateQuiz(id: string, dto: UpdateQuizDto) {
     if (!id || typeof id !== 'string') {
       throw new BadRequestException('Invalid quiz ID format');
     }
 
     try {
-      return await this.prisma.quiz.update({
+      return await this.prismaService.primary.quiz.update({
         where: { id },
         data: dto,
       });
@@ -173,7 +214,7 @@ export class QuizService {
     }
 
     try {
-      return await this.prisma.$transaction(async (prisma) => {
+      return await this.prismaService.primary.$transaction(async (prisma) => {
         await prisma.question.deleteMany({ where: { quizId: id } });
 
         return await prisma.quiz.delete({ where: { id } });
@@ -218,7 +259,7 @@ export class QuizService {
     }
 
     try {
-      const client = await this.prisma.client.findUnique({
+      const client = await this.prismaService.readReplica.client.findUnique({
         where: { id: clientId },
       });
       if (!client) {
@@ -245,7 +286,7 @@ export class QuizService {
         }
       }
 
-      return await this.prisma.clientQuizAttempt.create({
+      return await this.prismaService.primary.clientQuizAttempt.create({
         data: {
           clientId,
           quizId: dto.quizId,
@@ -276,7 +317,7 @@ export class QuizService {
     const skip = (page - 1) * limit;
 
     try {
-      return await this.prisma.clientQuizAttempt.findMany({
+      return await this.prismaService.readReplica.clientQuizAttempt.findMany({
         where: { clientId },
         skip,
         take: limit,
@@ -302,7 +343,7 @@ export class QuizService {
     }
 
     try {
-      const client = await this.prisma.client.findUnique({
+      const client = await this.prismaService.readReplica.client.findUnique({
         where: { id: clientId },
         select: {
           id: true,

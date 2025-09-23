@@ -109,16 +109,40 @@ describe('LearningController', () => {
   });
 
   describe('findByClientProfile', () => {
-    it('should return personalized content', async () => {
+    it('should call findByClientProfile service method with correct parameters', async () => {
       const mockData = [{ id: 'content-1' }];
       (service.findByClientProfile as jest.Mock).mockResolvedValue(mockData);
 
+      const language = 'en';
+      const goals = 'retirement,education';
+      const occupation = 'engineer';
+      const investmentExperience = 'intermediate';
+
       const result = await controller.findByClientProfile(
-        'en',
-        'AI',
-        'developer',
-        'beginner',
+        language,
+        goals,
+        occupation,
+        investmentExperience,
       );
+
+      expect(service.findByClientProfile).toHaveBeenCalledWith({
+        preferredLanguage: language,
+        goals: ['retirement', 'education'],
+        occupation: occupation,
+        investmentExperience: investmentExperience,
+      });
+      expect(result).toEqual(mockData);
+    });
+
+    it('should handle empty query parameters', async () => {
+      const mockData = [{ id: 'content-2' }];
+      (service.findByClientProfile as jest.Mock).mockResolvedValue(mockData);
+
+      const result = await controller.findByClientProfile();
+
+      expect(service.findByClientProfile).toHaveBeenCalledWith({
+        goals: [],
+      });
       expect(result).toEqual(mockData);
     });
 

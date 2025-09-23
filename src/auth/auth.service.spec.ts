@@ -18,10 +18,17 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jwtService = { sign: jest.fn().mockReturnValue('signed-jwt-token') } as any;
+
     prisma = {
-      user: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
+      primary: {
+        user: {
+          create: jest.fn(),
+        },
+      },
+      readReplica: {
+        user: {
+          findUnique: jest.fn(),
+        },
       },
     } as any;
 
@@ -55,7 +62,7 @@ describe('AuthService', () => {
         Prisma.PrismaClientKnownRequestError.prototype,
       );
 
-      (prisma.user.create as jest.Mock).mockRejectedValue(prismaError);
+      (prisma.primary.user.create as jest.Mock).mockRejectedValue(prismaError);
 
       await expect(
         service.signup('test@example.com', 'Password123'),
@@ -63,9 +70,9 @@ describe('AuthService', () => {
     });
 
     it('should create user and return safe response on success', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.readReplica.user.findUnique as jest.Mock).mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
-      (prisma.user.create as jest.Mock).mockResolvedValue({
+      (prisma.primary.user.create as jest.Mock).mockResolvedValue({
         id: 'user-id',
         email: 'test@example.com',
         password: 'hashedPassword',
@@ -74,7 +81,7 @@ describe('AuthService', () => {
 
       const result = await service.signup('test@example.com', 'Password123');
 
-      expect(prisma.user.create).toHaveBeenCalledWith({
+      expect(prisma.primary.user.create).toHaveBeenCalledWith({
         data: { email: 'test@example.com', password: 'hashedPassword' },
       });
       expect(result).toEqual({
@@ -88,9 +95,8 @@ describe('AuthService', () => {
     });
 
     it('should throw InternalServerErrorException on unexpected error', async () => {
-      (prisma.user.findUnique as jest.Mock).mockRejectedValue(
-        new Error('DB error'),
-      );
+      (prisma.readReplica.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.primary.user.create as jest.Mock).mockRejectedValue(new Error('DB error'));
 
       await expect(
         service.signup('test@example.com', 'Password123'),
@@ -100,7 +106,7 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('should throw UnauthorizedException if user not found', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.readReplica.user.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.login('test@example.com', 'Password123'),
@@ -108,7 +114,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if password is missing', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.readReplica.user.findUnique as jest.Mock).mockResolvedValue({
         email: 'test@example.com',
         password: null,
       });
@@ -119,7 +125,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if password does not match', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.readReplica.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user-id',
         email: 'test@example.com',
         password: 'hashedPassword',
@@ -133,7 +139,7 @@ describe('AuthService', () => {
     });
 
     it('should return JWT token on successful login', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.readReplica.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user-id',
         email: 'test@example.com',
         password: 'hashedPassword',

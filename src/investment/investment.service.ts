@@ -10,17 +10,18 @@ import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { UpdateInvestmentDto } from './dto/update-investment.dto';
 import { BulkCreateInvestmentDto } from './dto/bulk-create-investment.dto';
 
+import { PaginationDto } from '../common/dto/pagination.dto';
+
 @Injectable()
 export class InvestmentService {
   private readonly logger = new Logger(InvestmentService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(data: CreateInvestmentDto) {
     try {
-      return await this.prisma.investment.create({ data });
+      return await this.prisma.primary.investment.create({ data });
     } catch (error) {
-      // Handle known error codes regardless of error type
       if (error && typeof error === 'object' && 'code' in error) {
         if (error.code === 'P2002') {
           throw new BadRequestException('Duplicate investment entry');
@@ -43,10 +44,9 @@ export class InvestmentService {
     }
 
     try {
-      const createPromises = dto.investments.map((investment) =>
-        this.prisma.investment.create({ data: investment }),
-      );
-      return await Promise.all(createPromises);
+      return await this.prisma.primary.investment.createMany({
+        data: dto.investments,
+      });
     } catch (error) {
       if (error instanceof Error) {
         this.logger.error(`Bulk create failed: ${error.message}`, error.stack);
@@ -59,18 +59,38 @@ export class InvestmentService {
     }
   }
 
-  async findAllByClient(clientId: string, status?: string) {
+  async findAllByClient(clientId: string, status: string | undefined, paginationDto: PaginationDto) {
     if (!clientId || typeof clientId !== 'string') {
       throw new BadRequestException('Invalid client ID format');
     }
 
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
     try {
-      return await this.prisma.investment.findMany({
-        where: {
-          clientId,
-          status: status || undefined,
-        },
-      });
+      const [investments, total] = await this.prisma.primary.$transaction([
+        this.prisma.readReplica.investment.findMany({
+          where: {
+            clientId,
+            status: status || undefined,
+          },
+          skip,
+          take: limit,
+        }),
+        this.prisma.readReplica.investment.count({
+          where: {
+            clientId,
+            status: status || undefined,
+          },
+        }),
+      ]);
+
+      return {
+        data: investments,
+        total,
+        page,
+        limit,
+      };
     } catch (error) {
       this.logger.error(
         `Find all by client failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -86,7 +106,7 @@ export class InvestmentService {
     }
 
     try {
-      const investment = await this.prisma.investment.findUnique({
+      const investment = await this.prisma.readReplica.investment.findUnique({
         where: { id },
       });
       if (!investment) {
@@ -110,7 +130,7 @@ export class InvestmentService {
     }
 
     try {
-      return await this.prisma.investment.update({ where: { id }, data });
+      return await this.prisma.primary.investment.update({ where: { id }, data });
     } catch (error) {
       // Handle known error codes regardless of error type
       if (error && typeof error === 'object' && 'code' in error) {
@@ -136,7 +156,7 @@ export class InvestmentService {
     }
 
     try {
-      return await this.prisma.investment.delete({ where: { id } });
+      return await this.prisma.primary.investment.delete({ where: { id } });
     } catch (error) {
       // Handle known error codes regardless of error type
       if (error && typeof error === 'object' && 'code' in error) {
@@ -154,7 +174,7 @@ export class InvestmentService {
     }
   }
 
-  async findByClientAndTypes(clientId: string, types: string[]) {
+  async findByClientAndTypes(clientId: string, types: string[], paginationDto: PaginationDto) {
     if (!clientId || typeof clientId !== 'string') {
       throw new BadRequestException('Invalid client ID format');
     }
@@ -162,13 +182,33 @@ export class InvestmentService {
       throw new BadRequestException('Types array cannot be empty');
     }
 
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
     try {
-      return await this.prisma.investment.findMany({
-        where: {
-          clientId,
-          type: { in: types },
-        },
-      });
+      const [investments, total] = await this.prisma.primary.$transaction([
+        this.prisma.readReplica.investment.findMany({
+          where: {
+            clientId,
+            type: { in: types },
+          },
+          skip,
+          take: limit,
+        }),
+        this.prisma.readReplica.investment.count({
+          where: {
+            clientId,
+            type: { in: types },
+          },
+        }),
+      ]);
+
+      return {
+        data: investments,
+        total,
+        page,
+        limit,
+      };
     } catch (error) {
       if (error instanceof Error) {
         this.logger.error(

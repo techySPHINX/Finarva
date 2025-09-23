@@ -27,7 +27,7 @@ model Client {
   age                   Int?
   gender                String?
   income                Float?
-  goals                 String[]             // e.g., ["education", "retirement"]
+  goals                 String[]             
 
   occupation            String?              
   interests             String[]             
@@ -44,6 +44,7 @@ model Client {
   aiRecommendations     AIRecommendation[]
 
   Insurance Insurance[]
+  loans     Loan[]
 }
 
 
@@ -187,16 +188,25 @@ model Expense {
   updatedAt   DateTime @updatedAt
 }
 
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ACTIVE
+  PAID_OFF
+}
+
 model Loan {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String   @db.ObjectId
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
   amount       Float
   interestRate Float
   term         Int
-  startDate    DateTime
-  status       String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  type         String
+  status       LoanStatus @default(PENDING)
+  clientId     String     @db.ObjectId
+  client       Client     @relation(fields: [clientId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 model InventoryItem {

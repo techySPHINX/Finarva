@@ -1,135 +1,66 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { getQueueToken } from '@nestjs/bullmq';
 import { AiService } from './ai.service';
 import {
   BadRequestException,
-  HttpException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import axios from 'axios';
-
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('AiService', () => {
   let service: AiService;
+  let aiQueue: { add: jest.Mock };
 
-  beforeEach(() => {
-    process.env.GEMINI_API_KEY = 'test-api-key';
-    service = new AiService();
+  beforeEach(async () => {
+    aiQueue = { add: jest.fn() };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AiService,
+        {
+          provide: getQueueToken('ai-queue'),
+          useValue: aiQueue,
+        },
+      ],
+    }).compile();
+
+    service = module.get<AiService>(AiService);
     jest.clearAllMocks();
   });
 
-  describe('constructor', () => {
-    it('should throw error if GEMINI_API_KEY is not set', () => {
-      delete process.env.GEMINI_API_KEY;
-      expect(() => new AiService()).toThrow('AI service configuration error');
-    });
-  });
-
-  describe('callGeminiApi', () => {
-    it('should throw BadRequestException if prompt is empty', async () => {
-      await expect(service['callGeminiApi']('')).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('should return content if API call succeeds', async () => {
-      mockedAxios.post.mockResolvedValue({
-        data: {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: 'Sample response' }],
-              },
-            },
-          ],
-        },
-      });
-
-      const result = await service['callGeminiApi']('Test prompt');
-      expect(result).toBe('Sample response');
-    });
-
-    it('should return fallback if candidates are empty', async () => {
-      mockedAxios.post.mockResolvedValue({ data: {} });
-
-      const result = await service['callGeminiApi']('Test prompt');
-      expect(result).toBe('No response generated');
-    });
-
-    it('should throw HttpException on Axios error', async () => {
-      mockedAxios.post.mockRejectedValue({
-        response: { status: 502, data: { error: { message: 'Bad Gateway' } } },
-      });
-
-      await expect(service['callGeminiApi']('Test prompt')).rejects.toThrow(
-        HttpException,
-      );
-    });
-  });
-
   describe('generateQuizSuggestions', () => {
+    const clientProfile = {
+      id: '1',
+      name: 'John',
+      phone: '123',
+      agentId: 'a1',
+      language: 'en',
+      goals: [],
+    };
+
+    it('should add a quiz-suggestions-job to the queue', async () => {
+      aiQueue.add.mockResolvedValue({ id: 'job-id-1' });
+      const result = await service.generateQuizSuggestions(clientProfile);
+      expect(aiQueue.add).toHaveBeenCalledWith(
+        'quiz-suggestions-job',
+        { clientProfile },
+        expect.any(Object),
+      );
+      expect(result).toEqual({
+        jobId: 'job-id-1',
+        message: 'quiz-suggestions-job has been queued.',
+      });
+    });
+
     it('should throw BadRequestException if clientProfile is invalid', async () => {
       await expect(service.generateQuizSuggestions({} as any)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('should parse questions correctly from API response', async () => {
-      mockedAxios.post.mockResolvedValue({
-        data: {
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: '1. Question one\n2. Question two\n3. Question three',
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      });
-
-      const clientProfile = {
-        id: '1',
-        name: 'John',
-        phone: '123',
-        agentId: 'a1',
-        language: 'en',
-        goals: [],
-      };
-      const result = await service.generateQuizSuggestions(clientProfile);
-      expect(result).toEqual([
-        'Question one',
-        'Question two',
-        'Question three',
-      ]);
-    });
-
-    it('should fallback to default questions if parsing fails', async () => {
-      mockedAxios.post.mockResolvedValue({
-        data: {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: 'No questions here' }],
-              },
-            },
-          ],
-        },
-      });
-
-      const clientProfile = {
-        id: '1',
-        name: 'John',
-        phone: '123',
-        agentId: 'a1',
-        language: 'en',
-        goals: [],
-      };
-      const result = await service.generateQuizSuggestions(clientProfile);
-      expect(result.length).toBe(3);
+    it('should throw InternalServerErrorException on queue error', async () => {
+      aiQueue.add.mockRejectedValue(new Error('Queue error'));
+      await expect(
+        service.generateQuizSuggestions(clientProfile),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -142,36 +73,42 @@ describe('AiService', () => {
       language: 'en',
       goals: [],
     };
+    const learningData = { module: 'watched' };
+
+    it('should add a content-analysis-job to the queue', async () => {
+      aiQueue.add.mockResolvedValue({ id: 'job-id-2' });
+      const result = await service.analyzeLearningContent(
+        clientProfile,
+        learningData,
+      );
+      expect(aiQueue.add).toHaveBeenCalledWith(
+        'content-analysis-job',
+        { profile: clientProfile, learningStats: learningData },
+        expect.any(Object),
+      );
+      expect(result).toEqual({
+        jobId: 'job-id-2',
+        message: 'content-analysis-job has been queued.',
+      });
+    });
 
     it('should throw BadRequestException if clientProfile is invalid', async () => {
       await expect(
-        service.analyzeLearningContent({} as any, {}),
+        service.analyzeLearningContent({} as any, learningData),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw BadRequestException if learningStats is empty', async () => {
+    it('should throw BadRequestException if learningData is empty', async () => {
       await expect(
         service.analyzeLearningContent(clientProfile, {}),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should return response on success', async () => {
-      mockedAxios.post.mockResolvedValue({
-        data: {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: 'Analysis result' }],
-              },
-            },
-          ],
-        },
-      });
-
-      const result = await service.analyzeLearningContent(clientProfile, {
-        module: 'watched',
-      });
-      expect(result).toBe('Analysis result');
+    it('should throw InternalServerErrorException on queue error', async () => {
+      aiQueue.add.mockRejectedValue(new Error('Queue error'));
+      await expect(
+        service.analyzeLearningContent(clientProfile, learningData),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -185,27 +122,31 @@ describe('AiService', () => {
       goals: [],
     };
 
+    it('should add an investment-suggestions-job to the queue', async () => {
+      aiQueue.add.mockResolvedValue({ id: 'job-id-3' });
+      const result = await service.suggestInvestments(clientProfile);
+      expect(aiQueue.add).toHaveBeenCalledWith(
+        'investment-suggestions-job',
+        { clientProfile },
+        expect.any(Object),
+      );
+      expect(result).toEqual({
+        jobId: 'job-id-3',
+        message: 'investment-suggestions-job has been queued.',
+      });
+    });
+
     it('should throw BadRequestException if clientProfile is invalid', async () => {
       await expect(service.suggestInvestments({} as any)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('should return investment suggestions on success', async () => {
-      mockedAxios.post.mockResolvedValue({
-        data: {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: 'Investment advice' }],
-              },
-            },
-          ],
-        },
-      });
-
-      const result = await service.suggestInvestments(clientProfile);
-      expect(result).toBe('Investment advice');
+    it('should throw InternalServerErrorException on queue error', async () => {
+      aiQueue.add.mockRejectedValue(new Error('Queue error'));
+      await expect(service.suggestInvestments(clientProfile)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -219,63 +160,68 @@ describe('AiService', () => {
       goals: [],
     };
 
+    it('should add an insurance-suggestions-job to the queue', async () => {
+      aiQueue.add.mockResolvedValue({ id: 'job-id-4' });
+      const result = await service.suggestInsurance(clientProfile);
+      expect(aiQueue.add).toHaveBeenCalledWith(
+        'insurance-suggestions-job',
+        { clientProfile },
+        expect.any(Object),
+      );
+      expect(result).toEqual({
+        jobId: 'job-id-4',
+        message: 'insurance-suggestions-job has been queued.',
+      });
+    });
+
     it('should throw BadRequestException if clientProfile is invalid', async () => {
       await expect(service.suggestInsurance({} as any)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('should return insurance suggestions on success', async () => {
-      mockedAxios.post.mockResolvedValue({
-        data: {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: 'Insurance advice' }],
-              },
-            },
-          ],
-        },
-      });
-
-      const result = await service.suggestInsurance(clientProfile);
-      expect(result).toBe('Insurance advice');
+    it('should throw InternalServerErrorException on queue error', async () => {
+      aiQueue.add.mockRejectedValue(new Error('Queue error'));
+      await expect(service.suggestInsurance(clientProfile)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
-  describe('analyzeProfile', () => {
-    const clientProfile = {
-      id: '1',
-      name: 'John',
-      phone: '123',
-      agentId: 'a1',
-      language: 'en',
-      goals: [],
-    };
-
-    it('should return aggregated analysis', async () => {
-      service.generateQuizSuggestions = jest
-        .fn()
-        .mockResolvedValue(['q1', 'q2']);
-      service.suggestInvestments = jest.fn().mockResolvedValue('investment');
-      service.suggestInsurance = jest.fn().mockResolvedValue('insurance');
-
-      const result = await service.analyzeProfile(clientProfile);
-
+  describe('generateFinancialAdvice', () => {
+    it('should add a financial-advice-job to the queue', async () => {
+      const financialData = { income: 1000, expenses: 500 };
+      aiQueue.add.mockResolvedValue({ id: 'job-id-5' });
+      const result = await service.generateFinancialAdvice(financialData);
+      expect(aiQueue.add).toHaveBeenCalledWith(
+        'financial-advice-job',
+        { financialData },
+        expect.any(Object),
+      );
       expect(result).toEqual({
-        quizSuggestions: ['q1', 'q2'],
-        investmentAdvice: 'investment',
-        insuranceAdvice: 'insurance',
+        jobId: 'job-id-5',
+        message: 'financial-advice-job has been queued.',
       });
     });
 
-    it('should throw InternalServerErrorException on failure', async () => {
-      service.generateQuizSuggestions = jest
-        .fn()
-        .mockRejectedValue(new Error('fail'));
-      await expect(service.analyzeProfile(clientProfile)).rejects.toThrow(
-        InternalServerErrorException,
+    it('should throw BadRequestException if financialData is empty', async () => {
+      await expect(service.generateFinancialAdvice({})).rejects.toThrow(
+        BadRequestException,
       );
+    });
+
+    it('should throw BadRequestException if financialData is null', async () => {
+      await expect(service.generateFinancialAdvice(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on queue error', async () => {
+      const financialData = { income: 1000, expenses: 500 };
+      aiQueue.add.mockRejectedValue(new Error('Queue error'));
+      await expect(
+        service.generateFinancialAdvice(financialData),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

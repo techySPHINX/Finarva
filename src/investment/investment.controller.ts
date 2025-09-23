@@ -26,6 +26,8 @@ import { CreateInvestmentDto } from './dto/create-investment.dto';
 import { UpdateInvestmentDto } from './dto/update-investment.dto';
 import { BulkCreateInvestmentDto } from './dto/bulk-create-investment.dto';
 
+import { PaginationDto } from '../common/dto/pagination.dto';
+
 @ApiTags('Investments')
 @Controller('investments')
 export class InvestmentController {
@@ -92,13 +94,14 @@ export class InvestmentController {
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async findAllByClient(
     @Param('clientId') clientId: string,
-    @Query('status') status?: string,
+    @Query('status') status: string | undefined,
+    @Query() paginationDto: PaginationDto,
   ) {
     if (!clientId || typeof clientId !== 'string') {
       throw new BadRequestException('Invalid client ID format');
     }
     try {
-      return await this.investmentService.findAllByClient(clientId, status);
+      return await this.investmentService.findAllByClient(clientId, status, paginationDto);
     } catch (error) {
       this.logger.error(
         `Find all by client failed: ${(error as Error).message}`,
@@ -186,6 +189,7 @@ export class InvestmentController {
   async findByClientAndTypes(
     @Param('clientId') clientId: string,
     @Query('types') types: string,
+    @Query() paginationDto: PaginationDto,
   ) {
     if (!clientId || typeof clientId !== 'string') {
       throw new BadRequestException('Invalid client ID format');
@@ -206,6 +210,7 @@ export class InvestmentController {
       return await this.investmentService.findByClientAndTypes(
         clientId,
         typeList,
+        paginationDto,
       );
     } catch (error) {
       if (error instanceof Error) {

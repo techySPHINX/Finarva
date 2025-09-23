@@ -18,15 +18,13 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async signup(email: string, password: string) {
-    // Validate email format
     if (!this.isValidEmail(email)) {
       throw new UnauthorizedException('Invalid email format');
     }
 
-    // Validate password strength
     if (!this.isStrongPassword(password)) {
       throw new UnauthorizedException(
         'Password does not meet security requirements',
@@ -34,17 +32,16 @@ export class AuthService {
     }
 
     try {
-      const existing = await this.prisma.user.findUnique({ where: { email } });
+      const existing = await this.prisma.readReplica.user.findUnique({ where: { email } });
       if (existing) {
         throw new ConflictException('Email already registered');
       }
 
       const hashed = await bcrypt.hash(password, this.SALT_ROUNDS);
-      const user = await this.prisma.user.create({
+      const user = await this.prisma.primary.user.create({
         data: { email, password: hashed },
       });
 
-      // Omit sensitive data from response
       const { password: _, ...safeUser } = user;
       return {
         message: 'User registered successfully',
@@ -69,7 +66,7 @@ export class AuthService {
 
   async login(email: string, password: string) {
     try {
-      const user = await this.prisma.user.findUnique({ where: { email } });
+      const user = await this.prisma.readReplica.user.findUnique({ where: { email } });
 
       if (!user) {
         throw new UnauthorizedException('Invalid credentials');
@@ -92,13 +89,13 @@ export class AuthService {
 
       return {
         access_token: this.jwtService.sign(payload),
-        expires_in: 3600, // 1 hour expiration
+        expires_in: 3600,
       };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         this.logger.error(`Database error during login: ${error.message}`);
       }
-      throw error; // Rethrow handled exceptions
+      throw error;
     }
   }
 
@@ -108,7 +105,6 @@ export class AuthService {
   }
 
   private isStrongPassword(password: string): boolean {
-    // Minimum 8 characters, at least one letter and one number
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     return passwordRegex.test(password);
   }

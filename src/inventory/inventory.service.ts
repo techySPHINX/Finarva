@@ -6,28 +6,28 @@ import { UpdateItemDto } from './dto/update-item.dto';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   create(createItemDto: CreateItemDto) {
-    return this.prisma.inventoryItem.create({ data: createItemDto });
+    return this.prisma.primary.inventoryItem.create({ data: createItemDto });
   }
 
   findAll(userId: string) {
-    return this.prisma.inventoryItem.findMany({ where: { userId } });
+    return this.prisma.readReplica.inventoryItem.findMany({ where: { userId } });
   }
 
   findOne(id: string) {
-    return this.prisma.inventoryItem.findUnique({ where: { id } });
+    return this.prisma.readReplica.inventoryItem.findUnique({ where: { id } });
   }
 
   update(id: string, updateItemDto: UpdateItemDto) {
-    return this.prisma.inventoryItem.update({
+    return this.prisma.primary.inventoryItem.update({
       where: { id },
       data: updateItemDto,
     });
   }
 
   remove(id: string) {
-    return this.prisma.inventoryItem.delete({ where: { id } });
+    return this.prisma.primary.inventoryItem.delete({ where: { id } });
   }
 }

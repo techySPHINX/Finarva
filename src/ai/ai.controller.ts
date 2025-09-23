@@ -7,6 +7,8 @@ import {
   InternalServerErrorException,
   Logger,
   HttpException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -196,13 +198,13 @@ export class AiController {
   }
 
   @Post('financial-advice')
-  @ApiOperation({ summary: 'Generate financial advice based on user data' })
+  @HttpCode(HttpStatus.ACCEPTED) // Return 202 Accepted
+  @ApiOperation({ summary: 'Queues a job to generate financial advice' })
   @ApiBody({ type: Object }) // Replace with a specific DTO
-  @ApiResponse({ status: 200, description: 'Financial advice generated' })
+  @ApiResponse({ status: 202, description: 'Job has been queued successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
-  @ApiResponse({ status: 502, description: 'AI service unavailable' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
-  async generateFinancialAdvice(@Body() financialData: any): Promise<string> {
+  @ApiResponse({ status: 500, description: 'Failed to queue the job' })
+  async generateFinancialAdvice(@Body() financialData: any): Promise<{ jobId: string; message: string; }> {
     try {
       if (!financialData) {
         throw new BadRequestException('Financial data is required');
@@ -221,7 +223,7 @@ export class AiController {
         throw error;
       }
       throw new InternalServerErrorException(
-        'Failed to generate financial advice',
+        'Failed to queue financial advice job',
       );
     }
   }

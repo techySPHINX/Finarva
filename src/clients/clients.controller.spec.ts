@@ -14,7 +14,7 @@ import {
 describe('ClientsController', () => {
   let controller: ClientsController;
   let clientsService: ClientsService;
-  let aiService: AiService;
+  let aiService: any;
 
   const mockUser = { id: 'agent-1' };
   const mockReq = { user: mockUser };
@@ -92,13 +92,23 @@ describe('ClientsController', () => {
   });
 
   describe('findAll', () => {
-    it('should return clients for authenticated agent', async () => {
-      const mockData = [sampleClient];
+    it('should return clients for authenticated agent with default pagination', async () => {
+      const mockData = { data: [sampleClient], total: 1, page: 1, limit: 10 };
       (clientsService.findAllByAgent as jest.Mock).mockResolvedValue(mockData);
 
-      const result = await controller.findAll(mockReq as any);
+      const result = await controller.findAll(mockReq as any, {});
       expect(result).toEqual(mockData);
-      expect(clientsService.findAllByAgent).toHaveBeenCalledWith(mockUser.id);
+      expect(clientsService.findAllByAgent).toHaveBeenCalledWith(mockUser.id, {});
+    });
+
+    it('should return clients for authenticated agent with custom pagination', async () => {
+      const customPagination = { page: 2, limit: 5 };
+      const mockData = { data: [sampleClient], total: 1, page: 2, limit: 5 };
+      (clientsService.findAllByAgent as jest.Mock).mockResolvedValue(mockData);
+
+      const result = await controller.findAll(mockReq as any, customPagination);
+      expect(result).toEqual(mockData);
+      expect(clientsService.findAllByAgent).toHaveBeenCalledWith(mockUser.id, customPagination);
     });
 
     it('should throw InternalServerErrorException on failure', async () => {
@@ -106,7 +116,7 @@ describe('ClientsController', () => {
         new Error('DB error'),
       );
 
-      await expect(controller.findAll(mockReq as any)).rejects.toThrow(
+      await expect(controller.findAll(mockReq as any, {})).rejects.toThrow(
         InternalServerErrorException,
       );
     });

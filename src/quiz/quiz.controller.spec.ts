@@ -8,29 +8,45 @@ import { UpdateQuizDto } from './dto/update-quiz.dto';
 import {
   BadRequestException,
   InternalServerErrorException,
-  NotFoundException,
 } from '@nestjs/common';
 
 describe('QuizController', () => {
   let controller: QuizController;
   let service: QuizService;
 
-  const mockQuizService = {
-    createQuiz: jest.fn(),
-    addQuestion: jest.fn(),
-    getAllQuizzes: jest.fn(),
-    getQuizById: jest.fn(),
-    updateQuiz: jest.fn(),
-    deleteQuiz: jest.fn(),
-    submitQuiz: jest.fn(),
-    getAttemptsByClient: jest.fn(),
-    getQuizSuggestionsFromAI: jest.fn(),
+  let mockQuizService: {
+    createQuiz: jest.Mock,
+    addQuestion: jest.Mock,
+    getAllQuizzes: jest.Mock,
+    getQuizById: jest.Mock,
+    getQuizByIdConsistent: jest.Mock,
+    updateQuiz: jest.Mock,
+    deleteQuiz: jest.Mock,
+    submitQuiz: jest.Mock,
+    getAttemptsByClient: jest.Mock,
+    getQuizSuggestionsFromAI: jest.Mock,
   };
 
   beforeEach(async () => {
+    mockQuizService = {
+      createQuiz: jest.fn(),
+      addQuestion: jest.fn(),
+      getAllQuizzes: jest.fn(),
+      getQuizById: jest.fn(),
+      getQuizByIdConsistent: jest.fn(),
+      updateQuiz: jest.fn(),
+      deleteQuiz: jest.fn(),
+      submitQuiz: jest.fn(),
+      getAttemptsByClient: jest.fn(),
+      getQuizSuggestionsFromAI: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [QuizController],
-      providers: [{ provide: QuizService, useValue: mockQuizService }],
+      providers: [
+        { provide: QuizService, useValue: mockQuizService },
+        { provide: 'CACHE_MANAGER', useValue: {} },
+      ],
     }).compile();
 
     controller = module.get<QuizController>(QuizController);
@@ -45,10 +61,12 @@ describe('QuizController', () => {
       const req: any = { user: { id: 'agent-id' } };
 
       mockQuizService.createQuiz.mockResolvedValue({ id: 'quiz-id', ...dto });
+      mockQuizService.getQuizByIdConsistent.mockResolvedValue({ id: 'quiz-id', ...dto });
 
       const result = await controller.create(dto, req);
       expect(result).toEqual({ id: 'quiz-id', ...dto });
       expect(mockQuizService.createQuiz).toHaveBeenCalledWith(dto, 'agent-id');
+      expect(mockQuizService.getQuizByIdConsistent).toHaveBeenCalledWith('quiz-id');
     });
 
     it('should throw InternalServerErrorException on failure', async () => {
@@ -83,15 +101,68 @@ describe('QuizController', () => {
   });
 
   describe('findAll', () => {
-    it('should return all quizzes', async () => {
-      mockQuizService.getAllQuizzes.mockResolvedValue(['quiz1', 'quiz2']);
+    it('should return all quizzes with pagination data', async () => {
+      const mockData = {
+        data: ['quiz1', 'quiz2'],
+        total: 2,
+        page: 1,
+        limit: 10,
+      };
+      mockQuizService.getAllQuizzes.mockResolvedValue(mockData);
       const result = await controller.findAll(
         'en',
         'insurance,investment',
         '1',
         '10',
       );
-      expect(result).toEqual(['quiz1', 'quiz2']);
+      expect(result).toEqual(mockData);
+      expect(mockQuizService.getAllQuizzes).toHaveBeenCalledWith(
+        'en',
+        ['insurance', 'investment'],
+        1,
+        10,
+      );
+    });
+
+    it('should handle default pagination parameters', async () => {
+      const mockData = {
+        data: ['quiz1', 'quiz2'],
+        total: 2,
+        page: 1,
+        limit: 10,
+      };
+      mockQuizService.getAllQuizzes.mockResolvedValue(mockData);
+      const result = await controller.findAll(); // No parameters
+      expect(result).toEqual(mockData);
+      expect(mockQuizService.getAllQuizzes).toHaveBeenCalledWith(
+        undefined,
+        [],
+        1,
+        10,
+      );
+    });
+
+    it('should handle custom pagination parameters', async () => {
+      const mockData = {
+        data: ['quiz1'],
+        total: 2,
+        page: 2,
+        limit: 1,
+      };
+      mockQuizService.getAllQuizzes.mockResolvedValue(mockData);
+      const result = await controller.findAll(
+        undefined,
+        undefined,
+        '2',
+        '1',
+      );
+      expect(result).toEqual(mockData);
+      expect(mockQuizService.getAllQuizzes).toHaveBeenCalledWith(
+        undefined,
+        [],
+        2,
+        1,
+      );
     });
   });
 

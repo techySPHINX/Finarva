@@ -1,11 +1,8 @@
 
-import { IsString, IsNumber, IsDate, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
+import { LoanStatus } from '../enums/loan-status.enum';
 
 export class CreateLoanDto {
-  @IsString()
-  @IsNotEmpty()
-  userId!: string;
-
   @IsNumber()
   @IsNotEmpty()
   amount!: number;
@@ -18,11 +15,15 @@ export class CreateLoanDto {
   @IsNotEmpty()
   term!: number;
 
-  @IsDate()
+  @IsString()
   @IsNotEmpty()
-  startDate!: Date;
+  type!: string;
+
+  @IsEnum(LoanStatus)
+  @IsOptional()
+  status?: LoanStatus;
 
   @IsString()
   @IsNotEmpty()
-  status!: string;
+  clientId!: string;
 }

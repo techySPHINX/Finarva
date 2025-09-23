@@ -4,14 +4,26 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CashFlowService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async analyze(userId: string) {
-    const expenses = await this.prisma.expense.findMany({ where: { userId } });
-    const income = await this.prisma.investment.findMany({ where: { client: { agentId: userId }, status: 'matured' } });
+    const [expenseAggregation, incomeAggregation] = await Promise.all([
+      this.prisma.readReplica.expense.aggregate({
+        where: { userId },
+        _sum: {
+          amount: true,
+        },
+      }),
+      this.prisma.readReplica.investment.aggregate({
+        where: { client: { agentId: userId }, status: 'matured' },
+        _sum: {
+          returns: true,
+        },
+      }),
+    ]);
 
-    const totalExpenses = expenses.reduce((acc, expense) => acc + expense.amount, 0);
-    const totalIncome = income.reduce((acc, investment) => acc + (investment.returns || 0), 0);
+    const totalExpenses = expenseAggregation._sum.amount || 0;
+    const totalIncome = incomeAggregation._sum.returns || 0;
 
     return {
       totalIncome,

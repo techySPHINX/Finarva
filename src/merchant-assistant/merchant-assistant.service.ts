@@ -11,17 +11,17 @@ export class MerchantAssistantService {
     private prisma: PrismaService,
     private aiService: AiService,
     private vectorStoreService: VectorStoreService,
-  ) {}
+  ) { }
 
   async create(createMerchantAssistantDto: CreateMerchantAssistantDto) {
     const { merchantId, query } = createMerchantAssistantDto;
 
-    const queryEmbedding = await this.aiService.generateEmbedding(query);
+    const queryEmbedding: number[] = await this.aiService.generateEmbedding(query);
 
     const similarInteractions = await this.vectorStoreService.getSimilarEmbeddings(
       queryEmbedding,
       merchantId,
-      3, 
+      3,
     );
 
     let conversationHistory = '';
@@ -39,7 +39,7 @@ export class MerchantAssistantService {
 
     const aiResponse = await this.aiService.callGeminiApi(fullPrompt, 500);
 
-    const newInteraction = await this.prisma.merchantAssistant.create({
+    const newInteraction = await this.prisma.primary.merchantAssistant.create({
       data: {
         merchantId,
         query,
@@ -64,22 +64,26 @@ export class MerchantAssistantService {
     return newInteraction;
   }
 
+
   findAll() {
-    return this.prisma.merchantAssistant.findMany();
+    return this.prisma.readReplica.merchantAssistant.findMany();
   }
+
 
   findOne(id: number) {
-    return this.prisma.merchantAssistant.findUnique({ where: { id: String(id) } });
+    return this.prisma.readReplica.merchantAssistant.findUnique({ where: { id: String(id) } });
   }
 
+
   update(id: number, updateMerchantAssistantDto: UpdateMerchantAssistantDto) {
-    return this.prisma.merchantAssistant.update({
+    return this.prisma.primary.merchantAssistant.update({
       where: { id: String(id) },
       data: updateMerchantAssistantDto,
     });
   }
 
+
   remove(id: number) {
-    return this.prisma.merchantAssistant.delete({ where: { id: String(id) } });
+    return this.prisma.primary.merchantAssistant.delete({ where: { id: String(id) } });
   }
 }

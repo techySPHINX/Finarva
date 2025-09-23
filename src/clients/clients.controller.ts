@@ -13,6 +13,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   Logger,
+  Query,
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -27,6 +28,8 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
+
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('Clients')
 @ApiBearerAuth('access-token')
@@ -71,9 +74,9 @@ export class ClientsController {
   @ApiResponse({ status: 200, description: 'List of clients for the agent' })
   @ApiResponse({ status: 403, description: 'Forbidden resource' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async findAll(@Req() req: { user: { id: string } }) {
+  async findAll(@Req() req: { user: { id: string } }, @Query() paginationDto: PaginationDto) {
     try {
-      return await this.clientsService.findAllByAgent(req.user.id);
+      return await this.clientsService.findAllByAgent(req.user.id, paginationDto);
     } catch (error) {
       this.logger.error(
         `Client retrieval failed: ${error instanceof Error ? error.message : String(error)}`,

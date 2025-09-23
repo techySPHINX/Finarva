@@ -15,6 +15,7 @@ describe('AiController', () => {
     analyzeLearningContent: jest.fn(),
     suggestInvestments: jest.fn(),
     suggestInsurance: jest.fn(),
+    generateFinancialAdvice: jest.fn(), // Added
   };
 
   beforeEach(async () => {
@@ -142,6 +143,33 @@ describe('AiController', () => {
       mockAiService.suggestInsurance.mockRejectedValue(new Error('AI error'));
 
       await expect(controller.suggestInsurance(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+  });
+
+  describe('generateFinancialAdvice', () => {
+    it('should return job ID and message on success', async () => {
+      const financialData = { income: 1000, expenses: 500 };
+      const mockResult = { jobId: 'job-123', message: 'Job queued' };
+      mockAiService.generateFinancialAdvice.mockResolvedValue(mockResult);
+
+      const result = await controller.generateFinancialAdvice(financialData);
+      expect(result).toEqual(mockResult);
+      expect(mockAiService.generateFinancialAdvice).toHaveBeenCalledWith(financialData);
+    });
+
+    it('should throw BadRequestException if financialData is missing', async () => {
+      await expect(controller.generateFinancialAdvice(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw InternalServerErrorException on failure', async () => {
+      const financialData = { income: 1000, expenses: 500 };
+      mockAiService.generateFinancialAdvice.mockRejectedValue(new Error('AI error'));
+
+      await expect(controller.generateFinancialAdvice(financialData)).rejects.toThrow(
         InternalServerErrorException,
       );
     });

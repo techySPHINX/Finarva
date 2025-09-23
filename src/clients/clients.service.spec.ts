@@ -54,14 +54,22 @@ describe('ClientsService', () => {
         {
           provide: PrismaService,
           useValue: {
-            client: {
-              create: jest.fn().mockResolvedValue(sampleClient),
-              findMany: jest.fn().mockResolvedValue([sampleClient]),
-              findUnique: jest.fn().mockResolvedValue(sampleClient),
-              update: jest
-                .fn()
-                .mockResolvedValue({ ...sampleClient, ...sampleUpdateDto }),
-              delete: jest.fn().mockResolvedValue(sampleClient),
+            primary: {
+              client: {
+                create: jest.fn().mockResolvedValue(sampleClient),
+                update: jest
+                  .fn()
+                  .mockResolvedValue({ ...sampleClient, ...sampleUpdateDto }),
+                delete: jest.fn().mockResolvedValue(sampleClient),
+              },
+              $transaction: jest.fn().mockImplementation((actions) => Promise.all(actions)),
+            },
+            readReplica: {
+              client: {
+                findMany: jest.fn().mockResolvedValue([sampleClient]),
+                findUnique: jest.fn().mockResolvedValue(sampleClient),
+                count: jest.fn().mockResolvedValue(1),
+              },
             },
           },
         },
@@ -80,7 +88,7 @@ describe('ClientsService', () => {
     it('should create a client successfully', async () => {
       const result = await service.create(sampleCreateDto, sampleAgentId);
       expect(result).toEqual(sampleClient);
-      expect(prisma.client.create).toHaveBeenCalledWith({
+      expect(prisma.primary.client.create).toHaveBeenCalledWith({
         data: {
           ...sampleCreateDto,
           agentId: sampleAgentId,
@@ -101,7 +109,7 @@ describe('ClientsService', () => {
         clientVersion: '1.0',
         meta: { target: ['phone'] },
       });
-      jest.spyOn(prisma.client, 'create').mockRejectedValueOnce(error);
+      jest.spyOn(prisma.primary.client, 'create').mockRejectedValueOnce(error);
 
       await expect(
         service.create(sampleCreateDto, sampleAgentId),
@@ -110,7 +118,7 @@ describe('ClientsService', () => {
 
     it('should throw InternalServerErrorException on unknown error', async () => {
       jest
-        .spyOn(prisma.client, 'create')
+        .spyOn(prisma.primary.client, 'create')
         .mockRejectedValueOnce(new Error('DB error'));
 
       await expect(
@@ -120,20 +128,50 @@ describe('ClientsService', () => {
   });
 
   describe('findAllByAgent', () => {
-    it('should return clients for an agent', async () => {
-      const result = await service.findAllByAgent(sampleAgentId);
-      expect(result).toEqual([sampleClient]);
-      expect(prisma.client.findMany).toHaveBeenCalledWith({
+    it('should return clients for an agent with default pagination', async () => {
+      const result = await service.findAllByAgent(sampleAgentId, {});
+      expect(result).toEqual({
+        data: [sampleClient],
+        total: 1,
+        page: 1,
+        limit: 10,
+      });
+      expect(prisma.readReplica.client.findMany).toHaveBeenCalledWith({
         where: { agentId: sampleAgentId },
         orderBy: { createdAt: 'desc' },
+        skip: 0,
+        take: 10,
+      });
+      expect(prisma.readReplica.client.count).toHaveBeenCalledWith({
+        where: { agentId: sampleAgentId },
+      });
+    });
+
+    it('should return clients for an agent with custom pagination', async () => {
+      const customPagination = { page: 2, limit: 5 };
+      const result = await service.findAllByAgent(sampleAgentId, customPagination);
+      expect(result).toEqual({
+        data: [sampleClient],
+        total: 1,
+        page: 2,
+        limit: 5,
+      });
+      expect(prisma.readReplica.client.findMany).toHaveBeenCalledWith({
+        where: { agentId: sampleAgentId },
+        orderBy: { createdAt: 'desc' },
+        skip: 5,
+        take: 5,
+      });
+      expect(prisma.readReplica.client.count).toHaveBeenCalledWith({
+        where: { agentId: sampleAgentId },
       });
     });
 
     it('should throw InternalServerErrorException on error', async () => {
       jest
-        .spyOn(prisma.client, 'findMany')
+      jest.spyOn(prisma.readReplica.client, 'findMany')
         .mockRejectedValueOnce(new Error('DB error'));
-      await expect(service.findAllByAgent(sampleAgentId)).rejects.toThrow(
+      await expect(service.findAllByAgent(sampleAgentId, {})).rejects.toThrow(
         InternalServerErrorException,
       );
     });
@@ -143,7 +181,7 @@ describe('ClientsService', () => {
     it('should return a client by id', async () => {
       const result = await service.findOne(sampleClient.id);
       expect(result).toEqual(sampleClient);
-      expect(prisma.client.findUnique).toHaveBeenCalledWith({
+      expect(prisma.readReplica.client.findUnique).toHaveBeenCalledWith({
         where: { id: sampleClient.id },
       });
     });
@@ -155,7 +193,7 @@ describe('ClientsService', () => {
     });
 
     it('should throw NotFoundException when client not found', async () => {
-      jest.spyOn(prisma.client, 'findUnique').mockResolvedValueOnce(null);
+      jest.spyOn(prisma.readReplica.client, 'findUnique').mockResolvedValueOnce(null);
       await expect(service.findOne('non-existent-id')).rejects.toThrow(
         NotFoundException,
       );
@@ -163,7 +201,7 @@ describe('ClientsService', () => {
 
     it('should throw InternalServerErrorException on error', async () => {
       jest
-        .spyOn(prisma.client, 'findUnique')
+        .spyOn(prisma.readReplica.client, 'findUnique')
         .mockRejectedValueOnce(new Error('DB error'));
       await expect(service.findOne(sampleClient.id)).rejects.toThrow(
         InternalServerErrorException,
@@ -175,7 +213,7 @@ describe('ClientsService', () => {
     it('should update a client successfully', async () => {
       const result = await service.update(sampleClient.id, sampleUpdateDto);
       expect(result).toEqual({ ...sampleClient, ...sampleUpdateDto });
-      expect(prisma.client.update).toHaveBeenCalledWith({
+      expect(prisma.primary.client.update).toHaveBeenCalledWith({
         where: { id: sampleClient.id },
         data: {
           ...sampleUpdateDto,
@@ -195,7 +233,7 @@ describe('ClientsService', () => {
         code: 'P2025',
         clientVersion: '1.0',
       });
-      jest.spyOn(prisma.client, 'update').mockRejectedValueOnce(error);
+      jest.spyOn(prisma.primary.client, 'update').mockRejectedValueOnce(error);
 
       await expect(
         service.update('non-existent-id', sampleUpdateDto),
@@ -208,7 +246,7 @@ describe('ClientsService', () => {
         clientVersion: '1.0',
         meta: { target: ['phone'] },
       });
-      jest.spyOn(prisma.client, 'update').mockRejectedValueOnce(error);
+      jest.spyOn(prisma.primary.client, 'update').mockRejectedValueOnce(error);
 
       await expect(
         service.update(sampleClient.id, sampleUpdateDto),
@@ -217,7 +255,7 @@ describe('ClientsService', () => {
 
     it('should throw InternalServerErrorException on unknown error', async () => {
       jest
-        .spyOn(prisma.client, 'update')
+        .spyOn(prisma.primary.client, 'update')
         .mockRejectedValueOnce(new Error('DB error'));
       await expect(
         service.update(sampleClient.id, sampleUpdateDto),
@@ -229,7 +267,7 @@ describe('ClientsService', () => {
     it('should remove a client successfully', async () => {
       const result = await service.remove(sampleClient.id);
       expect(result).toEqual(sampleClient);
-      expect(prisma.client.delete).toHaveBeenCalledWith({
+      expect(prisma.primary.client.delete).toHaveBeenCalledWith({
         where: { id: sampleClient.id },
       });
     });
@@ -245,7 +283,7 @@ describe('ClientsService', () => {
         code: 'P2025',
         clientVersion: '1.0',
       });
-      jest.spyOn(prisma.client, 'delete').mockRejectedValueOnce(error);
+      jest.spyOn(prisma.primary.client, 'delete').mockRejectedValueOnce(error);
 
       await expect(service.remove('non-existent-id')).rejects.toThrow(
         NotFoundException,
@@ -254,7 +292,7 @@ describe('ClientsService', () => {
 
     it('should throw InternalServerErrorException on unknown error', async () => {
       jest
-        .spyOn(prisma.client, 'delete')
+        .spyOn(prisma.primary.client, 'delete')
         .mockRejectedValueOnce(new Error('DB error'));
       await expect(service.remove(sampleClient.id)).rejects.toThrow(
         InternalServerErrorException,
@@ -275,21 +313,26 @@ describe('ClientsService', () => {
         income: sampleClient.income,
         goals: sampleClient.goals,
         agentId: sampleClient.agentId,
+        createdAt: expect.any(Date),
+        interests: expect.any(Array),
+        investmentExperience: null,
+        occupation: null,
+        preferredLanguage: sampleClient.preferredLanguage,
       });
     });
 
     it('should handle missing optional fields', async () => {
-      const clientWithoutOptional: Client = {
+      const clientWithoutOptional: Partial<Client> = {
         ...sampleClient,
-        age: null,
-        gender: null,
-        income: null,
+        age: undefined,
+        gender: undefined,
+        income: undefined,
         goals: [],
-        preferredLanguage: null,
+        preferredLanguage: undefined,
       };
 
       jest
-        .spyOn(service, 'findOne')
+        .spyOn((service as any).prisma.readReplica.client, 'findUnique')
         .mockResolvedValueOnce(clientWithoutOptional);
 
       const result = await service.getClientProfile(sampleClient.id);
@@ -303,12 +346,16 @@ describe('ClientsService', () => {
         income: undefined,
         goals: [], // Default empty array
         agentId: sampleClient.agentId,
+        createdAt: expect.any(Date),
+        interests: expect.any(Array),
+        investmentExperience: null,
+        occupation: null,
       });
     });
 
     it('should propagate NotFoundException', async () => {
       jest
-        .spyOn(service, 'findOne')
+        .spyOn((service as any).prisma.readReplica.client, 'findUnique')
         .mockRejectedValueOnce(new NotFoundException('Not found'));
       await expect(service.getClientProfile('non-existent-id')).rejects.toThrow(
         NotFoundException,
@@ -317,7 +364,7 @@ describe('ClientsService', () => {
 
     it('should propagate other errors', async () => {
       jest
-        .spyOn(service, 'findOne')
+        .spyOn((service as any).prisma.readReplica.client, 'findUnique')
         .mockRejectedValueOnce(new Error('DB error'));
       await expect(service.getClientProfile(sampleClient.id)).rejects.toThrow(
         Error,

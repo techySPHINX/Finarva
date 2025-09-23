@@ -11,11 +11,13 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { Client } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
+import { PaginationDto } from '../common/dto/pagination.dto';
+
 @Injectable()
 export class ClientsService {
   private readonly logger = new Logger(ClientsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(data: CreateClientDto, agentId: string): Promise<Client> {
     if (!data.name || !data.phone) {
@@ -23,11 +25,11 @@ export class ClientsService {
     }
 
     try {
-      return await this.prisma.client.create({
+      return await this.prisma.primary.client.create({
         data: {
           ...data,
           agentId,
-          preferredLanguage: data.language || '', 
+          preferredLanguage: data.language || '',
         },
       });
     } catch (error) {
@@ -41,12 +43,29 @@ export class ClientsService {
     }
   }
 
-  async findAllByAgent(agentId: string): Promise<Client[]> {
+  async findAllByAgent(agentId: string, paginationDto: PaginationDto): Promise<{ data: Client[], total: number, page: number, limit: number }> {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
     try {
-      return await this.prisma.client.findMany({
-        where: { agentId },
-        orderBy: { createdAt: 'desc' },
-      });
+      const [clients, total] = await this.prisma.primary.$transaction([
+        this.prisma.readReplica.client.findMany({
+          where: { agentId },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.readReplica.client.count({
+          where: { agentId },
+        }),
+      ]);
+
+      return {
+        data: clients,
+        total,
+        page,
+        limit,
+      };
     } catch (error) {
       this.logError('FindAllByAgent', error);
       throw new InternalServerErrorException('Failed to retrieve clients');
@@ -59,7 +78,7 @@ export class ClientsService {
     }
 
     try {
-      const client = await this.prisma.client.findUnique({
+      const client = await this.prisma.readReplica.client.findUnique({
         where: { id },
       });
 
@@ -80,11 +99,11 @@ export class ClientsService {
     }
 
     try {
-      return await this.prisma.client.update({
+      return await this.prisma.primary.client.update({
         where: { id },
         data: {
           ...data,
-          preferredLanguage: data.language || undefined, 
+          preferredLanguage: data.language || undefined,
         },
       });
     } catch (error) {
@@ -106,7 +125,7 @@ export class ClientsService {
     }
 
     try {
-      return await this.prisma.client.delete({
+      return await this.prisma.primary.client.delete({
         where: { id },
       });
     } catch (error) {
@@ -132,17 +151,32 @@ export class ClientsService {
     agentId: string;
   }> {
     try {
-      const client = await this.findOne(id);
+      const client = await this.prisma.readReplica.client.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          preferredLanguage: true,
+          age: true,
+          gender: true,
+          income: true,
+          goals: true,
+          agentId: true,
+        },
+      });
+
+      if (!client) {
+        throw new NotFoundException(`Client with id ${id} not found`);
+      }
+
       return {
-        id: client.id,
-        name: client.name,
-        phone: client.phone,
+        ...client,
         language: client.preferredLanguage ?? 'en',
         age: client.age ?? undefined,
         gender: client.gender ?? undefined,
         income: client.income ?? undefined,
         goals: client.goals ?? [],
-        agentId: client.agentId,
       };
     } catch (error) {
       this.logError('Profile retrieval', error);

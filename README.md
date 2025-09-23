@@ -29,6 +29,15 @@
 
 ---
 
+## 🚀 Infrastructure and Performance Enhancements
+
+- **Background Job Processing**: Integrated **BullMQ** to manage long-running tasks asynchronously, ensuring the main application remains fast and responsive.
+- **Optimized Database Queries**: Enhanced query performance through indexing strategies and optimized data access patterns, reducing response times.
+- **Database Scalability**: Implemented a **read-replica database** strategy to distribute load and improve data availability for read-heavy operations.
+- **High Availability**: Leveraged **Node.js Clustering** to run multiple application instances in parallel, improving CPU utilization and overall throughput.
+
+---
+
 ## 🏗️ Tech Stack
 
 | Layer         | Technology                                                                          |

@@ -22,7 +22,7 @@ export class InsuranceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
-  ) {}
+  ) { }
 
   private mapAnalyzeToClientProfile(
     analyze: AnalyzeProfileDto,
@@ -44,7 +44,7 @@ export class InsuranceService {
     };
 
     try {
-      return await this.prisma.insurance.create({ data: insuranceData });
+      return await this.prisma.primary.insurance.create({ data: insuranceData });
     } catch (error: any) {
       if (error?.code === 'P2002') {
         throw new ConflictException('Unique constraint violation');
@@ -60,7 +60,7 @@ export class InsuranceService {
 
   async findAll(): Promise<(Insurance & { client: Client })[]> {
     try {
-      return await this.prisma.insurance.findMany({
+      return await this.prisma.readReplica.insurance.findMany({
         include: { client: true },
       });
     } catch (error: any) {
@@ -73,7 +73,7 @@ export class InsuranceService {
 
   async findAllByClient(clientId: string): Promise<Insurance[]> {
     try {
-      const entries = await this.prisma.insurance.findMany({
+      const entries = await this.prisma.readReplica.insurance.findMany({
         where: { clientId },
       });
       if (!entries || entries.length === 0) {
@@ -96,7 +96,7 @@ export class InsuranceService {
 
   async findOne(id: string): Promise<Insurance | null> {
     try {
-      const insurance = await this.prisma.insurance.findUnique({
+      const insurance = await this.prisma.readReplica.insurance.findUnique({
         where: { id },
       });
       if (!insurance) {
@@ -114,7 +114,7 @@ export class InsuranceService {
 
   async update(id: string, data: UpdateInsuranceDto): Promise<Insurance> {
     try {
-      return await this.prisma.insurance.update({
+      return await this.prisma.primary.insurance.update({
         where: { id },
         data,
       });
@@ -133,7 +133,7 @@ export class InsuranceService {
 
   async remove(id: string): Promise<Insurance> {
     try {
-      return await this.prisma.insurance.delete({
+      return await this.prisma.primary.insurance.delete({
         where: { id },
       });
     } catch (error) {

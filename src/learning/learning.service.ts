@@ -17,7 +17,7 @@ import { Prisma } from '@prisma/client';
 export class LearningService {
   private readonly logger = new Logger(LearningService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(
     dto: CreateLearningContentDto,
@@ -28,7 +28,7 @@ export class LearningService {
     }
 
     try {
-      return await this.prisma.learningContent.create({
+      return await this.prisma.primary.learningContent.create({
         data: { ...dto, createdById: creatorId },
       });
     } catch (error) {
@@ -54,7 +54,7 @@ export class LearningService {
     dto: UpdateLearningContentDto,
   ): Promise<LearningContent> {
     try {
-      return await this.prisma.learningContent.update({
+      return await this.prisma.primary.learningContent.update({
         where: { id },
         data: dto,
       });
@@ -83,7 +83,7 @@ export class LearningService {
     tags: string[] = [],
   ): Promise<LearningContent[]> {
     try {
-      return await this.prisma.learningContent.findMany({
+      return await this.prisma.readReplica.learningContent.findMany({
         where: {
           language: language || undefined,
           ...(tags.length ? { tags: { hasSome: tags } } : {}),
@@ -105,7 +105,7 @@ export class LearningService {
     }
 
     try {
-      const content = await this.prisma.learningContent.findUnique({
+      const content = await this.prisma.readReplica.learningContent.findUnique({
         where: { id },
       });
       if (!content) {
@@ -145,7 +145,7 @@ export class LearningService {
           : []),
       ];
 
-      return await this.prisma.learningContent.findMany({
+      return await this.prisma.readReplica.learningContent.findMany({
         where: {
           ...(preferredLanguage ? { language: preferredLanguage } : {}),
           ...(orConditions.length ? { OR: orConditions } : {}),
@@ -178,7 +178,7 @@ export class LearningService {
 
     try {
       // Verify content exists
-      const content = await this.prisma.learningContent.findUnique({
+      const content = await this.prisma.readReplica.learningContent.findUnique({
         where: { id: dto.contentId },
       });
       if (!content) {
@@ -187,7 +187,7 @@ export class LearningService {
         );
       }
 
-      return await this.prisma.learningProgress.upsert({
+      return await this.prisma.primary.learningProgress.upsert({
         where: {
           clientId_contentId: {
             clientId,
@@ -223,7 +223,7 @@ export class LearningService {
     clientId: string,
   ): Promise<(LearningProgress & { content: LearningContent })[]> {
     try {
-      return await this.prisma.learningProgress.findMany({
+      return await this.prisma.readReplica.learningProgress.findMany({
         where: { clientId },
         include: {
           content: true,

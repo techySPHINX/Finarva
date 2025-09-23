@@ -14,7 +14,7 @@ import { RecordProgressDto } from './dto/record-progress.dto';
 
 describe('LearningService', () => {
   let service: LearningService;
-  let prisma: PrismaService;
+  let prisma: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,15 +23,23 @@ describe('LearningService', () => {
         {
           provide: PrismaService,
           useValue: {
-            learningContent: {
-              create: jest.fn(),
-              update: jest.fn(),
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
+            primary: {
+              learningContent: {
+                create: jest.fn(),
+                update: jest.fn(),
+              },
+              learningProgress: {
+                upsert: jest.fn(),
+              },
             },
-            learningProgress: {
-              upsert: jest.fn(),
-              findMany: jest.fn(),
+            readReplica: {
+              learningContent: {
+                findMany: jest.fn(),
+                findUnique: jest.fn(),
+              },
+              learningProgress: {
+                findMany: jest.fn(),
+              },
             },
           },
         },
@@ -39,7 +47,7 @@ describe('LearningService', () => {
     }).compile();
 
     service = module.get<LearningService>(LearningService);
-    prisma = module.get<PrismaService>(PrismaService);
+    prisma = module.get<PrismaService>(PrismaService) as any;
   });
 
   const sampleCreateDto: CreateLearningContentDto = {
@@ -63,14 +71,14 @@ describe('LearningService', () => {
 
   describe('create', () => {
     it('should create learning content successfully', async () => {
-      (prisma.learningContent.create as jest.Mock).mockResolvedValue({
+      (prisma.primary.learningContent.create as jest.Mock).mockResolvedValue({
         id: 'content-1',
         ...sampleCreateDto,
       });
 
       const result = await service.create(sampleCreateDto, 'creator-1');
       expect(result).toEqual({ id: 'content-1', ...sampleCreateDto });
-      expect(prisma.learningContent.create).toHaveBeenCalledWith({
+      expect(prisma.primary.learningContent.create).toHaveBeenCalledWith({
         data: { ...sampleCreateDto, createdById: 'creator-1' },
       });
     });
@@ -84,9 +92,9 @@ describe('LearningService', () => {
 
     it('should throw ConflictException on duplicate entry', async () => {
       const error: any = new Error('Duplicate content');
-      error.code = 'P2002'; 
+      error.code = 'P2002';
 
-      (prisma.learningContent.create as jest.Mock).mockRejectedValue(error);
+      (prisma.primary.learningContent.create as jest.Mock).mockRejectedValue(error);
 
       await expect(
         service.create(sampleCreateDto, 'creator-1'),
@@ -96,7 +104,7 @@ describe('LearningService', () => {
 
   describe('update', () => {
     it('should update content successfully', async () => {
-      (prisma.learningContent.update as jest.Mock).mockResolvedValue({
+      (prisma.primary.learningContent.update as jest.Mock).mockResolvedValue({
         id: 'content-1',
         ...sampleUpdateDto,
       });
@@ -107,9 +115,9 @@ describe('LearningService', () => {
 
     it('should throw NotFoundException if content not found', async () => {
       const error: any = new Error('Content not found');
-      error.code = 'P2025'; 
+      error.code = 'P2025';
 
-      (prisma.learningContent.update as jest.Mock).mockRejectedValue(error);
+      (prisma.primary.learningContent.update as jest.Mock).mockRejectedValue(error);
 
       await expect(
         service.update('invalid-id', sampleUpdateDto),
@@ -120,19 +128,19 @@ describe('LearningService', () => {
   describe('findAll', () => {
     it('should return filtered contents', async () => {
       const mockData = [{ id: '1' }, { id: '2' }];
-      (prisma.learningContent.findMany as jest.Mock).mockResolvedValue(
+      (prisma.readReplica.learningContent.findMany as jest.Mock).mockResolvedValue(
         mockData,
       );
 
       const result = await service.findAll('en', ['AI']);
       expect(result).toEqual(mockData);
-      expect(prisma.learningContent.findMany).toHaveBeenCalledWith({
+      expect(prisma.readReplica.learningContent.findMany).toHaveBeenCalledWith({
         where: { language: 'en', tags: { hasSome: ['AI'] } },
       });
     });
 
     it('should return contents with no filters', async () => {
-      (prisma.learningContent.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.readReplica.learningContent.findMany as jest.Mock).mockResolvedValue([]);
       const result = await service.findAll();
       expect(result).toEqual([]);
     });
@@ -140,7 +148,7 @@ describe('LearningService', () => {
 
   describe('findOne', () => {
     it('should return content by id', async () => {
-      (prisma.learningContent.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.readReplica.learningContent.findUnique as jest.Mock).mockResolvedValue({
         id: 'content-1',
       });
 
@@ -155,7 +163,7 @@ describe('LearningService', () => {
     });
 
     it('should throw NotFoundException if content not found', async () => {
-      (prisma.learningContent.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.readReplica.learningContent.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.findOne('invalid-id')).rejects.toThrow(
         NotFoundException,
@@ -164,22 +172,109 @@ describe('LearningService', () => {
   });
 
   describe('findByClientProfile', () => {
-    it('should return personalized contents', async () => {
+    it('should return personalized contents based on language and goals', async () => {
       const profile = {
         preferredLanguage: 'en',
-        goals: ['AI'],
-        occupation: 'developer',
-        investmentExperience: 'beginner',
+        goals: ['retirement', 'education'],
       };
       const mockData = [{ id: 'content-1' }];
 
-      (prisma.learningContent.findMany as jest.Mock).mockResolvedValue(
+      (prisma.readReplica.learningContent.findMany as jest.Mock).mockResolvedValue(
         mockData,
       );
 
       const result = await service.findByClientProfile(profile);
       expect(result).toEqual(mockData);
-      expect(prisma.learningContent.findMany).toHaveBeenCalled();
+      expect(prisma.readReplica.learningContent.findMany).toHaveBeenCalledWith({
+        where: {
+          language: 'en',
+          OR: [{ tags: { hasSome: ['retirement', 'education'] } }],
+        },
+        take: 10,
+      });
+    });
+
+    it('should return personalized contents based on occupation', async () => {
+      const profile = {
+        occupation: 'farmer',
+      };
+      const mockData = [{ id: 'content-2' }];
+
+      (prisma.readReplica.learningContent.findMany as jest.Mock).mockResolvedValue(
+        mockData,
+      );
+
+      const result = await service.findByClientProfile(profile);
+      expect(result).toEqual(mockData);
+      expect(prisma.readReplica.learningContent.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [{ tags: { has: 'farmer' } }],
+        },
+        take: 10,
+      });
+    });
+
+    it('should return personalized contents based on investment experience', async () => {
+      const profile = {
+        investmentExperience: 'advanced',
+      };
+      const mockData = [{ id: 'content-3' }];
+
+      (prisma.readReplica.learningContent.findMany as jest.Mock).mockResolvedValue(
+        mockData,
+      );
+
+      const result = await service.findByClientProfile(profile);
+      expect(result).toEqual(mockData);
+      expect(prisma.readReplica.learningContent.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [{ tags: { has: 'advanced' } }],
+        },
+        take: 10,
+      });
+    });
+
+    it('should return personalized contents with no filters if profile is empty', async () => {
+      const profile = {};
+      const mockData = [{ id: 'content-4' }];
+
+      (prisma.readReplica.learningContent.findMany as jest.Mock).mockResolvedValue(
+        mockData,
+      );
+
+      const result = await service.findByClientProfile(profile);
+      expect(result).toEqual(mockData);
+      expect(prisma.readReplica.learningContent.findMany).toHaveBeenCalledWith({
+        where: {},
+        take: 10,
+      });
+    });
+
+    it('should combine multiple profile parameters', async () => {
+      const profile = {
+        preferredLanguage: 'es',
+        goals: ['saving'],
+        occupation: 'teacher',
+      };
+      const mockData = [{ id: 'content-5' }];
+
+
+      (prisma.readReplica.learningContent.findMany as jest.Mock).mockResolvedValue(
+        mockData,
+      );
+
+      const result = await service.findByClientProfile(profile);
+      expect(result).toEqual(mockData);
+      expect(prisma.readReplica.learningContent.findMany).toHaveBeenCalledWith({
+        where: {
+          language: 'es',
+          OR: [
+            { tags: { hasSome: ['saving'] } },
+            { tags: { has: 'teacher' } },
+          ],
+        },
+        take: 10,
+      });
     });
   });
 
@@ -195,7 +290,7 @@ describe('LearningService', () => {
     });
 
     it('should throw NotFoundException if content not found', async () => {
-      (prisma.learningContent.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.readReplica.learningContent.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.recordProgress('client-1', sampleRecordDto),
@@ -203,10 +298,10 @@ describe('LearningService', () => {
     });
 
     it('should upsert progress successfully', async () => {
-      (prisma.learningContent.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.readReplica.learningContent.findUnique as jest.Mock).mockResolvedValue({
         id: 'content-1',
       });
-      (prisma.learningProgress.upsert as jest.Mock).mockResolvedValue({
+      (prisma.primary.learningProgress.upsert as jest.Mock).mockResolvedValue({
         id: 'progress-1',
       });
 
@@ -218,7 +313,7 @@ describe('LearningService', () => {
   describe('getClientProgress', () => {
     it('should return client progress with content', async () => {
       const mockData = [{ id: 'progress-1', content: { id: 'content-1' } }];
-      (prisma.learningProgress.findMany as jest.Mock).mockResolvedValue(
+      (prisma.readReplica.learningProgress.findMany as jest.Mock).mockResolvedValue(
         mockData,
       );
 
@@ -227,7 +322,7 @@ describe('LearningService', () => {
     });
 
     it('should throw InternalServerErrorException on failure', async () => {
-      (prisma.learningProgress.findMany as jest.Mock).mockRejectedValue(
+      (prisma.readReplica.learningProgress.findMany as jest.Mock).mockRejectedValue(
         new Error('DB error'),
       );
 

@@ -13,7 +13,13 @@ import {
   NotFoundException,
   InternalServerErrorException,
   Logger,
+  UseInterceptors,
 } from '@nestjs/common';
+import {
+  CacheInterceptor,
+  CacheKey,
+  CacheTTL,
+} from '@nestjs/cache-manager';
 import { QuizService } from './quiz.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { Request } from 'express';
@@ -72,7 +78,9 @@ export class QuizController {
   async create(@Body() dto: CreateQuizDto, @Req() req: Request) {
     try {
       const userId = this.getUserId(req);
-      return await this.quizService.createQuiz(dto, userId);
+      const createdQuiz = await this.quizService.createQuiz(dto, userId);
+      // Fetch the quiz consistently from the primary after creation
+      return await this.quizService.getQuizByIdConsistent(createdQuiz.id);
     } catch (error) {
       if (error instanceof Error) {
         this.logger.error(`Create quiz failed: ${error.message}`, error.stack);
@@ -99,8 +107,6 @@ export class QuizController {
     } catch (error) {
       if (error instanceof Error) {
         this.logger.error(`Add question failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Add question failed: ${String(error)}`);
       }
       if (
         error instanceof NotFoundException ||
@@ -113,6 +119,9 @@ export class QuizController {
   }
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('all_quizzes')
+  @CacheTTL(60) // Cache for 60 seconds
   @ApiOperation({
     summary: '📚 Get all quizzes (with optional filters and pagination)',
   })
@@ -182,8 +191,6 @@ export class QuizController {
       }
       if (error instanceof Error) {
         this.logger.error(`Find quiz failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Find quiz failed: ${String(error)}`);
       }
       throw new InternalServerErrorException('Failed to retrieve quiz');
     }
@@ -209,8 +216,6 @@ export class QuizController {
       }
       if (error instanceof Error) {
         this.logger.error(`Update quiz failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Update quiz failed: ${String(error)}`);
       }
       throw new InternalServerErrorException('Failed to update quiz');
     }
@@ -235,8 +240,6 @@ export class QuizController {
       }
       if (error instanceof Error) {
         this.logger.error(`Delete quiz failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Delete quiz failed: ${String(error)}`);
       }
       throw new InternalServerErrorException('Failed to delete quiz');
     }
@@ -256,8 +259,6 @@ export class QuizController {
     } catch (error) {
       if (error instanceof Error) {
         this.logger.error(`Submit quiz failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Submit quiz failed: ${String(error)}`);
       }
       if (
         error instanceof NotFoundException ||
@@ -302,8 +303,6 @@ export class QuizController {
     } catch (error) {
       if (error instanceof Error) {
         this.logger.error(`Get attempts failed: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Get attempts failed: ${String(error)}`);
       }
       throw new InternalServerErrorException(
         'Failed to retrieve quiz attempts',
@@ -340,3 +339,4 @@ export class QuizController {
     }
   }
 }
+
