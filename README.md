@@ -55,22 +55,46 @@
 
 ```
 📦 src
-├── ai                # AI Integration layer (Gemini/OpenAI)
-├── auth              # Authentication and authorization
-├── cash-flow         # Cash flow analysis and forecasting
-├── clients           # Client module (profile, preferences)
-├── expenses          # Expense tracking and management
-├── insurance         # Insurance suggestion logic
-├── inventory         # Inventory and supply chain management
-├── investment        # Investments & recommendations
-├── learning          # Content learning logic
-├── loans             # Micro-loan and credit facilitation
-├── merchant-assistant# AI-powered merchant assistant
-├── prisma            # Prisma schema & database setup
-├── quiz              # Quiz suggestion, history & records
-├── reporting         # Business analytics and reporting
-└── vector-store      # Pinecone vector store integration
+├── ai/                  # AI Integration layer (Gemini/OpenAI)
+├── analytics/           # Business analytics and reporting
+├── app.controller.ts    # Main app controller
+├── app.module.ts        # Main app module
+├── app.service.ts       # Main app service
+├── auth/                # Authentication and authorization
+├── cash-flow/           # Cash flow analysis and forecasting
+├── clients/             # Client module (profile, preferences)
+├── common/              # Shared DTOs and utilities
+├── expenses/            # Expense tracking and management
+├── insurance/           # Insurance suggestion logic
+├── inventory/           # Inventory and supply chain management
+├── investment/          # Investments & recommendations
+├── invoicing/           # Invoice creation, Stripe integration
+├── learning/            # Content learning logic
+├── loans/               # Micro-loan and credit facilitation
+├── main.ts              # App entry point
+├── merchant-assistant/  # AI-powered merchant assistant
+├── prisma/              # Prisma service integration
+├── quiz/                # Quiz suggestion, history & records
+├── reporting/           # Business analytics and reporting
+├── tax/                 # Tax calculation and reporting
+├── types/               # Shared types
+├── vector-store/        # Pinecone vector store integration
 ```
+
+📦 prisma/
+└── schema.prisma # Prisma schema definition
+
+📦 test/
+├── app.e2e-spec.ts # End-to-end tests
+├── jest-e2e.json # Jest config for e2e
+└── mocks/ # Mock services for testing
+
+Other root files:
+├── .env # Environment variables
+├── Dockerfile # Docker setup
+├── package.json # Project dependencies
+├── README.md # Project documentation
+└── ... # Configs, scripts, etc.
 
 ---
 
