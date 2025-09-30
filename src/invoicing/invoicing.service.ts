@@ -10,14 +10,14 @@ export class InvoicingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
-  ) {}
+  ) { }
 
   async create(createInvoiceDto: CreateInvoiceDto) {
     const { clientId, issueDate, dueDate, items } = createInvoiceDto;
 
-    const total = items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+    const total = items.reduce((acc: number, item: { quantity: number; unitPrice: number }) => acc + item.quantity * item.unitPrice, 0);
 
-    const invoice = await this.prisma.invoice.create({
+    const invoice = await this.prisma.primary.invoice.create({
       data: {
         client: { connect: { id: clientId } },
         issueDate: new Date(issueDate),
@@ -25,7 +25,7 @@ export class InvoicingService {
         total,
         invoiceNumber: this.generateInvoiceNumber(),
         items: {
-          create: items.map((item) => ({
+          create: items.map((item: { description: string; quantity: number; unitPrice: number }) => ({
             description: item.description,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -40,11 +40,11 @@ export class InvoicingService {
   }
 
   findAll() {
-    return this.prisma.invoice.findMany({ include: { items: true } });
+    return this.prisma.readReplica.invoice.findMany({ include: { items: true } });
   }
 
   findOne(id: string) {
-    return this.prisma.invoice.findUnique({ where: { id }, include: { items: true } });
+    return this.prisma.readReplica.invoice.findUnique({ where: { id }, include: { items: true } });
   }
 
   async update(id: string, updateInvoiceDto: UpdateInvoiceDto) {
@@ -52,17 +52,17 @@ export class InvoicingService {
 
     let total = 0;
     if (items) {
-      total = items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+      total = items.reduce((acc: number, item: { quantity: number; unitPrice: number }) => acc + item.quantity * item.unitPrice, 0);
     }
 
-    const invoice = await this.prisma.invoice.update({
+    const invoice = await this.prisma.primary.invoice.update({
       where: { id },
       data: {
         ...rest,
         total,
         items: {
           deleteMany: {},
-          create: items.map((item) => ({
+          create: items.map((item: { description: string; quantity: number; unitPrice: number }) => ({
             description: item.description,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -77,7 +77,7 @@ export class InvoicingService {
   }
 
   remove(id: string) {
-    return this.prisma.invoice.delete({ where: { id } });
+    return this.prisma.primary.invoice.delete({ where: { id } });
   }
 
   private generateInvoiceNumber(): string {
@@ -110,7 +110,7 @@ export class InvoicingService {
       throw new Error('Invoice ID not found in payment intent metadata');
     }
 
-    await this.prisma.invoice.update({
+    await this.prisma.primary.invoice.update({
       where: { id: invoiceId },
       data: { status: 'PAID' },
     });

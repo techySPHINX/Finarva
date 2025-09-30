@@ -6,15 +6,15 @@ export class CalculateTaxDto {
   @ApiProperty()
   @IsNumber()
   @IsPositive()
-  income: number;
+  income!: number;
 
   @ApiProperty()
   @IsNumber()
   @IsPositive()
-  expenses: number;
+  expenses!: number;
 
   @ApiProperty()
   @IsNumber()
   @IsPositive()
-  year: number;
+  year!: number;
 }

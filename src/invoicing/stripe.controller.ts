@@ -13,7 +13,7 @@ export class StripeController {
     private readonly stripeService: StripeService,
     private readonly invoicingService: InvoicingService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Post('webhook')
   @ApiOperation({ summary: 'Handle Stripe webhooks' })
@@ -21,7 +21,7 @@ export class StripeController {
     const event = await this.stripeService.constructEvent(
       req.body,
       sig,
-      this.configService.get<string>('STRIPE_WEBHOOK_SECRET'),
+      this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || '',
     );
 
     if (event.type === 'payment_intent.succeeded') {
