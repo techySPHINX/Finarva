@@ -1,5 +1,17 @@
+
+jest.mock('@prisma/client', () => {
+  return {
+    PrismaClient: jest.fn().mockImplementation(() => ({
+      $connect: jest.fn(),
+      $disconnect: jest.fn(),
+      $on: jest.fn(),
+    })),
+  };
+});
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from './prisma.service';
+import { PrismaClient } from '@prisma/client';
 
 describe('PrismaService', () => {
   let service: PrismaService;
@@ -16,3 +28,4 @@ describe('PrismaService', () => {
     expect(service).toBeDefined();
   });
 });
+

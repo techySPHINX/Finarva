@@ -19,16 +19,27 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
+import { RateLimiterGuard, RateLimiterModule } from 'nestjs-rate-limiter';
+import { APP_GUARD } from '@nestjs/core';
+import { InvoicingModule } from './invoicing/invoicing.module';
+import { InvoicingService } from './invoicing/invoicing.service';
+import { InvoicingController } from './invoicing/invoicing.controller';
+import { TaxModule } from './tax/tax.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    RateLimiterModule.register({
+      points: 100,
+      duration: 60,
+    }),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({
-        // Add cache config here if needed, e.g. store, host, port, etc.
+        ttl: parseInt(config.get<string>('CACHE_TTL', '60'), 10),
       }),
     }),
     BullModule.forRootAsync({
@@ -55,8 +66,18 @@ import { CacheModule } from '@nestjs/cache-manager';
     LoansModule,
     InventoryModule,
     ReportingModule,
+    InvoicingModule,
+    TaxModule,
+    AnalyticsModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, InvoicingController],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: RateLimiterGuard,
+    },
+    InvoicingService,
+  ],
 })
 export class AppModule { }

@@ -17,6 +17,7 @@ model User {
 
   Client           Client[]
   LearningContent  LearningContent[]
+  taxes            Tax[]
 }
 
 model Client {
@@ -45,6 +46,38 @@ model Client {
 
   Insurance Insurance[]
   loans     Loan[]
+  invoices  Invoice[]
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+}
+
+model Invoice {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceNumber String        @unique
+  clientId      String        @db.ObjectId
+  client        Client        @relation(fields: [clientId], references: [id])
+  issueDate     DateTime
+  dueDate       DateTime
+  status        InvoiceStatus @default(DRAFT)
+  total         Float
+  items         InvoiceItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId   String   @db.ObjectId
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  description String
+  quantity    Float
+  unitPrice   Float
+  total       Float
 }
 
 
@@ -217,5 +250,17 @@ model InventoryItem {
   price     Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Tax {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  user          User     @relation(fields: [userId], references: [id])
+  year          Int
+  income        Float
+  expenses      Float
+  taxableIncome Float
+  taxAmount     Float
+  createdAt     DateTime @default(now())
 }
 
