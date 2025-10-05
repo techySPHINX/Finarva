@@ -1,0 +1,213 @@
+{
+  "info": {
+    "name": "Finarva API - AI & Analytics",
+    "description": "AI-powered recommendations and analytics endpoints for financial insights and business intelligence",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "AI Recommendations",
+      "item": [
+        {
+          "name": "Get Investment Recommendations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has recommendations', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('recommendations');",
+                  "    pm.expect(jsonData.recommendations).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Each recommendation has required fields', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.recommendations.length > 0) {",
+                  "        jsonData.recommendations.forEach(rec => {",
+                  "            pm.expect(rec).to.have.property('type');",
+                  "            pm.expect(rec).to.have.property('recommendation');",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"type\": \"investment\",\n  \"context\": {\n    \"income\": 75000,\n    \"savings\": 10000,\n    \"goals\": [\"retirement\", \"home_purchase\"],\n    \"riskTolerance\": \"moderate\",\n    \"timeHorizon\": \"long_term\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["ai", "recommendations"]
+            },
+            "description": "Get AI-powered investment recommendations based on client profile and context."
+          }
+        },
+        {
+          "name": "Process Financial Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has analysis results', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('analysis');",
+                  "    pm.expect(jsonData).to.have.property('insights');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": {\n    \"transactions\": [\n      {\n        \"amount\": 150.50,\n        \"category\": \"food\",\n        \"date\": \"2025-09-28\",\n        \"description\": \"Restaurant dinner\"\n      },\n      {\n        \"amount\": 2500.00,\n        \"category\": \"rent\",\n        \"date\": \"2025-09-01\",\n        \"description\": \"Monthly rent payment\"\n      }\n    ],\n    \"timeframe\": \"monthly\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/process",
+              "host": ["{{baseUrl}}"],
+              "path": ["ai", "process"]
+            },
+            "description": "Process financial transaction data and provide AI-powered insights."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Financial Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has financial metrics', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('totalRevenue');",
+                  "    pm.expect(jsonData).to.have.property('totalExpenses');",
+                  "    pm.expect(jsonData).to.have.property('profit');",
+                  "});",
+                  "",
+                  "pm.test('Financial calculations are correct', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    const calculatedProfit = jsonData.totalRevenue - jsonData.totalExpenses;",
+                  "    pm.expect(jsonData.profit).to.eql(calculatedProfit);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/financial-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "financial-summary"]
+            },
+            "description": "Get comprehensive financial summary including revenue, expenses, and profit metrics."
+          }
+        },
+        {
+          "name": "Get Sales Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has sales data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('monthlySales');",
+                  "    pm.expect(jsonData).to.have.property('topItems');",
+                  "    pm.expect(jsonData).to.have.property('salesByClient');",
+                  "});",
+                  "",
+                  "pm.test('Monthly sales is an object', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.monthlySales).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/sales-analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "sales-analytics"]
+            },
+            "description": "Get detailed sales analytics including monthly trends, top items, and client breakdowns."
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  }
+}

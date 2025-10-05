@@ -1,0 +1,245 @@
+{
+  "info": {
+    "name": "Finarva API - Clients Management",
+    "description": "Client management endpoints for Finarva platform including CRUD operations and profile management",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Client",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Response has client data', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('id');",
+              "    pm.expect(jsonData).to.have.property('name');",
+              "    pm.expect(jsonData).to.have.property('email');",
+              "    pm.expect(jsonData).to.have.property('agentId');",
+              "});",
+              "",
+              "pm.test('Client data matches request', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const requestData = JSON.parse(pm.request.body.raw);",
+              "    pm.expect(jsonData.name).to.eql(requestData.name);",
+              "    pm.expect(jsonData.email).to.eql(requestData.email);",
+              "});",
+              "",
+              "// Store client ID for future requests",
+              "if (pm.response.code === 201) {",
+              "    const responseData = pm.response.json();",
+              "    pm.environment.set('clientId', responseData.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+1234567890\",\n  \"dateOfBirth\": \"1990-01-15T00:00:00.000Z\",\n  \"address\": \"123 Main St, City, State 12345\",\n  \"occupation\": \"entrepreneur\",\n  \"incomeLevel\": \"MEDIUM\",\n  \"goals\": [\"saving\", \"investment\"],\n  \"riskTolerance\": \"MODERATE\",\n  \"preferredLanguage\": \"en\",\n  \"investmentExperience\": \"beginner\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/clients",
+          "host": ["{{baseUrl}}"],
+          "path": ["clients"]
+        },
+        "description": "Create a new client profile with comprehensive personal and financial information."
+      }
+    },
+    {
+      "name": "Get All Clients",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response is an array', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('Each client has required fields', function () {",
+              "    const jsonData = pm.response.json();",
+              "    if (jsonData.length > 0) {",
+              "        jsonData.forEach(client => {",
+              "            pm.expect(client).to.have.property('id');",
+              "            pm.expect(client).to.have.property('name');",
+              "            pm.expect(client).to.have.property('email');",
+              "        });",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/clients",
+          "host": ["{{baseUrl}}"],
+          "path": ["clients"]
+        },
+        "description": "Retrieve all clients associated with the authenticated agent."
+      }
+    },
+    {
+      "name": "Get Client by ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has client details', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('id');",
+              "    pm.expect(jsonData).to.have.property('name');",
+              "    pm.expect(jsonData).to.have.property('email');",
+              "    pm.expect(jsonData).to.have.property('goals');",
+              "});",
+              "",
+              "pm.test('Client ID matches request parameter', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.id).to.eql(pm.environment.get('clientId'));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/clients/{{clientId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["clients", "{{clientId}}"]
+        },
+        "description": "Retrieve detailed information for a specific client by ID."
+      }
+    },
+    {
+      "name": "Update Client",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has updated data', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const requestData = JSON.parse(pm.request.body.raw);",
+              "    pm.expect(jsonData.phone).to.eql(requestData.phone);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+1987654321\",\n  \"address\": \"456 Updated Ave, New City, State 54321\",\n  \"riskTolerance\": \"AGGRESSIVE\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/clients/{{clientId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["clients", "{{clientId}}"]
+        },
+        "description": "Update specific fields of a client profile."
+      }
+    },
+    {
+      "name": "Delete Client",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 or 204', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});",
+              "",
+              "// Clear client ID from environment after deletion",
+              "pm.environment.unset('clientId');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/clients/{{clientId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["clients", "{{clientId}}"]
+        },
+        "description": "Delete a client profile permanently."
+      }
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  }
+}

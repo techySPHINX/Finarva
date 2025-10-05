@@ -1,0 +1,135 @@
+{
+  "financial_examples": {
+    "expense_records": [
+      {
+        "category": "marketing",
+        "amount": 450.0,
+        "date": "2025-09-30T14:30:00.000Z",
+        "description": "Google Ads campaign for Q4"
+      },
+      {
+        "category": "office_supplies",
+        "amount": 125.75,
+        "date": "2025-09-29T10:15:00.000Z",
+        "description": "Printer paper and ink cartridges"
+      },
+      {
+        "category": "travel",
+        "amount": 850.0,
+        "date": "2025-09-28T08:00:00.000Z",
+        "description": "Business conference registration and travel"
+      },
+      {
+        "category": "software",
+        "amount": 99.99,
+        "date": "2025-09-27T12:00:00.000Z",
+        "description": "Monthly CRM software subscription"
+      }
+    ],
+    "investment_portfolios": [
+      {
+        "clientId": "507f1f77bcf86cd799439012",
+        "type": "STOCKS",
+        "amount": 10000,
+        "description": "S&P 500 Index Fund",
+        "expectedReturn": 7.2,
+        "riskLevel": "MODERATE"
+      },
+      {
+        "clientId": "507f1f77bcf86cd799439012",
+        "type": "BONDS",
+        "amount": 5000,
+        "description": "Government Treasury Bonds",
+        "expectedReturn": 3.5,
+        "riskLevel": "LOW"
+      },
+      {
+        "clientId": "507f1f77bcf86cd799439013",
+        "type": "CRYPTO",
+        "amount": 2500,
+        "description": "Bitcoin and Ethereum portfolio",
+        "expectedReturn": 15.0,
+        "riskLevel": "HIGH"
+      }
+    ],
+    "tax_calculations": [
+      {
+        "income": 75000,
+        "expenses": 12000,
+        "year": 2025
+      },
+      {
+        "income": 125000,
+        "expenses": 25000,
+        "year": 2025
+      },
+      {
+        "income": 45000,
+        "expenses": 8000,
+        "year": 2025
+      }
+    ],
+    "loan_applications": [
+      {
+        "amount": 50000,
+        "purpose": "EQUIPMENT_PURCHASE",
+        "term": 60,
+        "interestRate": 5.5,
+        "collateral": "New manufacturing equipment"
+      },
+      {
+        "amount": 15000,
+        "purpose": "WORKING_CAPITAL",
+        "term": 24,
+        "interestRate": 7.2,
+        "collateral": "Business inventory"
+      },
+      {
+        "amount": 100000,
+        "purpose": "BUSINESS_EXPANSION",
+        "term": 84,
+        "interestRate": 6.8,
+        "collateral": "Commercial real estate"
+      }
+    ]
+  },
+  "insurance_examples": {
+    "business_insurance": {
+      "clientId": "507f1f77bcf86cd799439012",
+      "type": "BUSINESS_LIABILITY",
+      "coverage": 1000000,
+      "premium": 250.0,
+      "provider": "ABC Insurance Company",
+      "policyNumber": "BL-2025-001234"
+    },
+    "health_insurance": {
+      "clientId": "507f1f77bcf86cd799439012",
+      "type": "HEALTH",
+      "coverage": 500000,
+      "premium": 450.0,
+      "provider": "HealthCare Plus",
+      "policyNumber": "HC-2025-567890"
+    }
+  },
+  "expected_responses": {
+    "expense_created": {
+      "id": "507f1f77bcf86cd799439020",
+      "category": "marketing",
+      "amount": 450.0,
+      "date": "2025-09-30T14:30:00.000Z",
+      "description": "Google Ads campaign for Q4",
+      "userId": "507f1f77bcf86cd799439011",
+      "createdAt": "2025-09-30T15:00:00.000Z"
+    },
+    "tax_calculation_result": {
+      "id": "507f1f77bcf86cd799439021",
+      "income": 75000,
+      "expenses": 12000,
+      "taxableIncome": 63000,
+      "taxAmount": 12600,
+      "year": 2025,
+      "userId": "507f1f77bcf86cd799439011",
+      "createdAt": "2025-09-30T15:00:00.000Z"
+    }
+  }
+}

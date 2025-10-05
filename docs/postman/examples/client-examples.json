@@ -1,0 +1,72 @@
+{
+  "client_examples": {
+    "entrepreneur_profile": {
+      "name": "Maria Rodriguez",
+      "email": "maria.rodriguez@example.com",
+      "phone": "+1555123456",
+      "dateOfBirth": "1985-03-15T00:00:00.000Z",
+      "address": "789 Business Ave, Entrepreneur City, EC 12345",
+      "occupation": "restaurant_owner",
+      "incomeLevel": "MEDIUM",
+      "goals": ["saving", "business_growth", "retirement"],
+      "riskTolerance": "MODERATE",
+      "preferredLanguage": "es",
+      "investmentExperience": "intermediate"
+    },
+    "tech_startup_founder": {
+      "name": "Alex Chen",
+      "email": "alex.chen@techstartup.com",
+      "phone": "+1555987654",
+      "dateOfBirth": "1992-07-22T00:00:00.000Z",
+      "address": "456 Innovation St, Tech Valley, TV 54321",
+      "occupation": "tech_entrepreneur",
+      "incomeLevel": "HIGH",
+      "goals": ["investment", "tax_optimization", "business_expansion"],
+      "riskTolerance": "AGGRESSIVE",
+      "preferredLanguage": "en",
+      "investmentExperience": "advanced"
+    },
+    "small_retailer": {
+      "name": "Ahmed Hassan",
+      "email": "ahmed.hassan@retailstore.com",
+      "phone": "+1555456789",
+      "dateOfBirth": "1978-11-08T00:00:00.000Z",
+      "address": "123 Market St, Commerce Town, CT 67890",
+      "occupation": "retail_owner",
+      "incomeLevel": "LOW",
+      "goals": ["saving", "debt_management", "inventory_optimization"],
+      "riskTolerance": "CONSERVATIVE",
+      "preferredLanguage": "ar",
+      "investmentExperience": "beginner"
+    }
+  },
+  "update_examples": {
+    "contact_update": {
+      "phone": "+1555111222",
+      "address": "Updated Address, New City, NC 11111"
+    },
+    "financial_profile_update": {
+      "incomeLevel": "HIGH",
+      "riskTolerance": "AGGRESSIVE",
+      "goals": ["investment", "tax_optimization"]
+    },
+    "preferences_update": {
+      "preferredLanguage": "fr",
+      "investmentExperience": "advanced"
+    }
+  },
+  "expected_responses": {
+    "successful_creation": {
+      "id": "507f1f77bcf86cd799439012",
+      "name": "Maria Rodriguez",
+      "email": "maria.rodriguez@example.com",
+      "agentId": "507f1f77bcf86cd799439011",
+      "occupation": "restaurant_owner",
+      "incomeLevel": "MEDIUM",
+      "goals": ["saving", "business_growth", "retirement"],
+      "riskTolerance": "MODERATE",
+      "createdAt": "2025-09-30T12:00:00.000Z",
+      "updatedAt": "2025-09-30T12:00:00.000Z"
+    }
+  }
+}

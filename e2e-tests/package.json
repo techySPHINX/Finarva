@@ -1,0 +1,44 @@
+{
+  "name": "@finarva/e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end testing suite for Finarva API",
+  "scripts": {
+    "test": "jest --config=jest.config.js",
+    "test:watch": "jest --config=jest.config.js --watch",
+    "test:debug": "DEBUG_MODE=true jest --config=jest.config.js --verbose",
+    "test:coverage": "jest --config=jest.config.js --coverage",
+    "test:ci": "jest --config=jest.config.js --ci --coverage --watchAll=false",
+    "test:parallel": "PARALLEL_TESTS=true jest --config=jest.config.js --maxWorkers=4",
+    "test:verbose": "jest --config=jest.config.js --verbose",
+    "test:auth": "jest --config=jest.config.js --testPathPattern=auth.e2e-spec.ts",
+    "test:clients": "jest --config=jest.config.js --testPathPattern=clients.e2e-spec.ts",
+    "test:financial": "jest --config=jest.config.js --testPathPattern=financial-services.e2e-spec.ts",
+    "test:ai-analytics": "jest --config=jest.config.js --testPathPattern=ai-analytics.e2e-spec.ts",
+    "test:learning": "jest --config=jest.config.js --testPathPattern=learning-business.e2e-spec.ts",
+    "test:performance": "jest --config=jest.config.js --testPathPattern=performance.e2e-spec.ts",
+    "test:security": "jest --config=jest.config.js --testPathPattern=security.e2e-spec.ts",
+    "setup:test-db": "node utils/setup-test-db.js",
+    "cleanup:test-db": "node utils/cleanup-test-db.js",
+    "clean": "rimraf coverage dist node_modules/.cache",
+    "lint": "eslint specs/**/*.ts utils/**/*.ts",
+    "format": "prettier --write specs/**/*.ts utils/**/*.ts"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "faker": "^6.6.6",
+    "moment": "^2.29.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.6.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "dotenv": "^16.3.1",
+    "eslint": "^8.49.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  }
+}

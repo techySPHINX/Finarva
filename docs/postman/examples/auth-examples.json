@@ -1,0 +1,49 @@
+{
+  "signup_examples": {
+    "basic_user": {
+      "email": "john.entrepreneur@example.com",
+      "password": "SecurePass123!"
+    },
+    "business_owner": {
+      "email": "sarah.business@example.com",
+      "password": "BusinessPass456!"
+    }
+  },
+  "login_examples": {
+    "standard_login": {
+      "email": "john.entrepreneur@example.com",
+      "password": "SecurePass123!"
+    },
+    "invalid_credentials": {
+      "email": "wrong@example.com",
+      "password": "wrongpassword"
+    }
+  },
+  "expected_responses": {
+    "successful_signup": {
+      "message": "User registered successfully",
+      "user": {
+        "id": "507f1f77bcf86cd799439011",
+        "email": "john.entrepreneur@example.com",
+        "role": "USER",
+        "createdAt": "2025-09-30T12:00:00.000Z"
+      }
+    },
+    "successful_login": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "507f1f77bcf86cd799439011",
+        "email": "john.entrepreneur@example.com",
+        "role": "USER"
+      }
+    },
+    "validation_errors": {
+      "statusCode": 400,
+      "message": [
+        "email must be a valid email",
+        "password must be longer than or equal to 8 characters"
+      ],
+      "error": "Bad Request"
+    }
+  }
+}
