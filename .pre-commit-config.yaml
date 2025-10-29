@@ -1,0 +1,167 @@
+# =============================================================================
+# FINARVA API - PRE-COMMIT HOOKS CONFIGURATION
+# =============================================================================
+# This file configures pre-commit hooks to ensure code quality and consistency
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  # =============================================================================
+  # GENERAL CODE QUALITY
+  # =============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+        exclude: \.md$
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # =============================================================================
+  # SECRETS DETECTION
+  # =============================================================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock.json
+
+  # =============================================================================
+  # TYPESCRIPT/JAVASCRIPT FORMATTING
+  # =============================================================================
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        files: \.(js|ts|json|yaml|yml|md)$
+        exclude: |
+          (?x)^(
+            package-lock\.json|
+            \.vscode/.*|
+            dist/.*|
+            coverage/.*|
+            node_modules/.*
+          )$
+
+  # =============================================================================
+  # TYPESCRIPT LINTING
+  # =============================================================================
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.56.0
+    hooks:
+      - id: eslint
+        files: \.(js|ts)$
+        exclude: |
+          (?x)^(
+            dist/.*|
+            coverage/.*|
+            node_modules/.*
+          )$
+        additional_dependencies:
+          - '@typescript-eslint/eslint-plugin@^8.0.0'
+          - '@typescript-eslint/parser@^8.0.0'
+          - 'eslint-config-prettier@^10.0.0'
+          - 'eslint-plugin-prettier@^5.0.0'
+
+  # =============================================================================
+  # DOCKERFILE LINTING
+  # =============================================================================
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: ['--ignore', 'DL3008', '--ignore', 'DL3009']
+
+  # =============================================================================
+  # SHELL SCRIPT LINTING
+  # =============================================================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+
+  # =============================================================================
+  # COMMIT MESSAGE VALIDATION
+  # =============================================================================
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.13.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # =============================================================================
+  # SECURITY SCANNING
+  # =============================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: ['-r', '.']
+        files: \.py$
+
+  # =============================================================================
+  # DEPENDENCY CHECKS
+  # =============================================================================
+  - repo: local
+    hooks:
+      - id: audit-dependencies
+        name: Audit npm dependencies
+        entry: npm audit
+        language: system
+        files: package\.json$
+        pass_filenames: false
+
+      - id: outdated-dependencies
+        name: Check for outdated dependencies
+        entry: npm outdated
+        language: system
+        files: package\.json$
+        pass_filenames: false
+        always_run: false
+
+  # =============================================================================
+  # CUSTOM PROJECT HOOKS
+  # =============================================================================
+  - repo: local
+    hooks:
+      - id: prisma-format
+        name: Format Prisma schema
+        entry: npx prisma format
+        language: system
+        files: prisma/schema\.prisma$
+        pass_filenames: false
+
+      - id: typescript-compile
+        name: TypeScript compilation check
+        entry: npx tsc --noEmit
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+
+      - id: test-affected
+        name: Run tests for affected files
+        entry: npm run test
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+        stages: [pre-push]
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+default_stages: [commit]
+fail_fast: false
+minimum_pre_commit_version: 3.0.0

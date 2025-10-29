@@ -1,0 +1,241 @@
+name: 🏷️ Create Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., v1.0.0)"
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  validate:
+    name: 🔍 Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏷️ Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Run linting
+        run: npm run lint:check
+
+      - name: 🧪 Run tests
+        run: npm run test:ci
+
+      - name: 🏗️ Build application
+        run: npm run build
+
+  create-release:
+    name: 🚀 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build application
+        run: npm run build
+
+      - name: 📦 Create distribution package
+        run: |
+          mkdir -p release-assets
+          tar -czf release-assets/finarva-api-${{ needs.validate.outputs.version }}.tar.gz \
+            dist/ \
+            package.json \
+            package-lock.json \
+            prisma/ \
+            README.md \
+            LICENSE \
+            CHANGELOG.md \
+            docker-compose.yml \
+            Dockerfile \
+            .env.example
+
+      - name: 📋 Generate Release Notes
+        id: release-notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          ## 🚀 Finarva API ${{ needs.validate.outputs.version }}
+
+          ### 🌟 What's New
+
+          This release includes the latest features and improvements to the Finarva AI Backend platform.
+
+          ### 🔧 Installation
+
+          #### Using Docker (Recommended)
+          ```bash
+          # Clone the repository
+          git clone https://github.com/techySPHINX/Finarva.git
+          cd Finarva
+
+          # Start with Docker Compose
+          docker-compose up -d
+          ```
+
+          #### Manual Installation
+          ```bash
+          # Download and extract
+          wget https://github.com/techySPHINX/Finarva/releases/download/${{ needs.validate.outputs.version }}/finarva-api-${{ needs.validate.outputs.version }}.tar.gz
+          tar -xzf finarva-api-${{ needs.validate.outputs.version }}.tar.gz
+
+          # Install dependencies
+          npm install
+
+          # Configure environment
+          cp .env.example .env
+          # Edit .env with your configuration
+
+          # Setup database
+          npm run db:setup
+
+          # Start the application
+          npm run start:prod
+          ```
+
+          ### 📚 Documentation
+          - **API Documentation**: Available at `/api/docs` when running
+          - **Full Documentation**: [README.md](https://github.com/techySPHINX/Finarva/blob/main/README.md)
+          - **Contributing Guide**: [CONTRIBUTING.md](https://github.com/techySPHINX/Finarva/blob/main/CONTRIBUTING.md)
+
+          ### 🔒 Security
+          - Report security issues to: security@finarva.com
+          - See [SECURITY.md](https://github.com/techySPHINX/Finarva/blob/main/SECURITY.md) for details
+
+          ### 🤝 Support
+          - **Issues**: [GitHub Issues](https://github.com/techySPHINX/Finarva/issues)
+          - **Discussions**: [GitHub Discussions](https://github.com/techySPHINX/Finarva/discussions)
+          - **Email**: support@finarva.com
+
+          ### 🏷️ Docker Images
+          - `ghcr.io/techysphinx/finarva:${{ needs.validate.outputs.version }}`
+          - `ghcr.io/techysphinx/finarva:latest`
+
+          ---
+
+          **Full Changelog**: https://github.com/techySPHINX/Finarva/compare/v0.0.1...${{ needs.validate.outputs.version }}
+          EOF
+
+      - name: 🏷️ Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          release_name: "Finarva API ${{ needs.validate.outputs.version }}"
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+
+      - name: 📎 Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/finarva-api-${{ needs.validate.outputs.version }}.tar.gz
+          asset_name: finarva-api-${{ needs.validate.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+
+  docker-release:
+    name: 🐳 Release Docker Images
+    runs-on: ubuntu-latest
+    needs: [validate, create-release]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.validate.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.validate.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.validate.outputs.version }}
+            type=raw,value=latest
+
+      - name: 🏗️ Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  notify:
+    name: 📢 Post-Release Notifications
+    runs-on: ubuntu-latest
+    needs: [validate, create-release, docker-release]
+    if: always()
+
+    steps:
+      - name: 📋 Release Summary
+        run: |
+          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ needs.create-release.result == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Images**: ${{ needs.docker-release.result == 'success' && '✅ Published' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Release Page](https://github.com/techySPHINX/Finarva/releases/tag/${{ needs.validate.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Docker Image](https://ghcr.io/techysphinx/finarva:${{ needs.validate.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Documentation](https://github.com/techySPHINX/Finarva#readme)" >> $GITHUB_STEP_SUMMARY

@@ -1,8 +1,11 @@
 export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/specs'],
-  testMatch: ['**/*.e2e-spec.ts', '**/*.e2e-spec.js'],
+  roots: ['<rootDir>'],
+  testMatch: [
+    '<rootDir>/specs/**/*.e2e-spec.ts',
+    '<rootDir>/specs/**/*.e2e-spec.js',
+  ],
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
