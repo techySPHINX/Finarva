@@ -1,0 +1,57 @@
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform variable files (contains sensitive data)
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Terraform lock files (commit .terraform.lock.hcl for consistency)
+.terraform/
+.terraform.lock.hcl
+
+# Terraform plan files
+*.tfplan
+*.tfplan.json
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Azure outputs
+azure-outputs.txt
+outputs.txt
+
+# SSH keys (should never be in version control)
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store

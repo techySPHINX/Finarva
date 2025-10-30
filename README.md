@@ -269,6 +269,61 @@ docs/             # Additional documentation
 
 ## 🚀 Deployment
 
+### Quick Deployment Options
+
+#### Option 1: Azure Cloud (Recommended for Production)
+
+Deploy to Azure with complete infrastructure automation using Terraform:
+
+```bash
+# Navigate to infrastructure directory
+cd infrastructure/azure
+
+# Configure your deployment
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+# Deploy infrastructure
+terraform init
+terraform apply
+
+# Deploy application
+cd ..
+./scripts/deploy-to-azure.sh <VM_IP> azureuser
+```
+
+**Features:**
+
+- ✅ Complete infrastructure as code (Terraform)
+- ✅ Auto-configured VM with Docker, Nginx, SSL
+- ✅ Managed Redis Cache and optional PostgreSQL
+- ✅ Application Insights monitoring
+- ✅ Automated backups and security updates
+- ✅ One-command deployment script
+
+📖 **See [Infrastructure Guide](infrastructure/README.md) for detailed Azure deployment instructions**
+
+#### Option 2: Docker Deployment
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Or build manually
+docker build -t finarva-api .
+docker run -p 3000:3000 finarva-api
+```
+
+#### Option 3: Manual Deployment
+
+```bash
+# Build application
+npm run build
+
+# Run production server
+npm run start:prod
+```
+
 ### Environment Variables
 
 Key environment variables for deployment:
@@ -290,20 +345,28 @@ PINECONE_API_KEY=...
 # Security
 JWT_SECRET=...
 CORS_ORIGIN=https://yourdomain.com
+
+# Azure (when using Azure deployment)
+REDIS_HOST=your-redis.redis.cache.windows.net
+REDIS_PASSWORD=...
+APPINSIGHTS_INSTRUMENTATIONKEY=...
 ```
 
-See `.env.example` for complete configuration.
+See `.env.example` and `.env.production.example` for complete configuration.
 
 ### Production Checklist
 
 - [ ] Environment variables configured
 - [ ] Database migrations applied
 - [ ] SSL certificates installed
-- [ ] Monitoring configured
+- [ ] Monitoring configured (Application Insights or similar)
 - [ ] Backup strategy implemented
-- [ ] Load balancer configured
-- [ ] CDN setup for static assets
+- [ ] Load balancer configured (if needed)
+- [ ] CDN setup for static assets (optional)
 - [ ] Log aggregation configured
+- [ ] Health check endpoints verified
+- [ ] Security headers enabled (Helmet)
+- [ ] Rate limiting configured
 
 ### CI/CD Pipeline
 
@@ -311,6 +374,12 @@ See `.env.example` for complete configuration.
 - **Continuous Deployment**: Automated deployment to staging and production
 - **Quality Gates**: Code coverage, security scans, performance tests
 - **Rollback Strategy**: Automated rollback on deployment failures
+
+**Workflows:**
+
+- `.github/workflows/ci.yaml` - Comprehensive CI pipeline
+- `.github/workflows/deploy.yaml` - Production deployment
+- `.github/workflows/codeql.yml` - Security analysis
 
 ---
 

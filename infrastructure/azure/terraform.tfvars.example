@@ -1,0 +1,99 @@
+# =============================================================================
+# TERRAFORM VARIABLES CONFIGURATION
+# =============================================================================
+# Copy this file to terraform.tfvars and update with your values
+# WARNING: Never commit terraform.tfvars to version control!
+# =============================================================================
+
+# Environment name (dev, staging, production)
+environment = "production"
+
+# Azure region for all resources
+# Popular options: eastus, westus2, centralus, westeurope, northeurope
+location = "eastus"
+
+# Virtual Machine size
+# Development: Standard_B1s, Standard_B2s
+# Staging: Standard_B2ms, Standard_D2s_v3
+# Production: Standard_D4s_v3, Standard_D8s_v3
+vm_size = "Standard_B2s"
+
+# SSH Configuration
+admin_username      = "azureuser"
+ssh_public_key_path = "~/.ssh/id_rsa.pub"  # Path to your public SSH key
+
+# IP addresses allowed to SSH into the VM
+# Add your public IP address(es) for security
+# Get your IP: curl ifconfig.me
+allowed_ssh_ips = [
+  "0.0.0.0/0",  # WARNING: Replace with your actual IP (e.g., "203.0.113.0/32")
+]
+
+# Azure PostgreSQL Flexible Server
+# Set to true if you want managed PostgreSQL (recommended for production)
+# Set to false if using external database (e.g., MongoDB Atlas, Supabase)
+enable_postgresql = false
+
+# Database credentials (only used if enable_postgresql = true)
+db_admin_username = "finarvaadmin"
+db_admin_password = "CHANGE_ME_Strong_Password_123!"  # Use strong password!
+db_name           = "finarva"
+db_sku_name       = "B_Standard_B1ms"  # B_Standard_B1ms (dev), GP_Standard_D4s_v3 (prod)
+db_storage_mb     = 32768              # 32GB, increase for production
+
+# Azure Redis Cache Configuration
+redis_capacity = 1        # 0 = 250MB, 1 = 1GB, 2 = 2.5GB, 3 = 6GB, 4 = 13GB, 5 = 26GB, 6 = 53GB
+redis_family   = "C"      # C = Standard, P = Premium
+redis_sku      = "Standard"  # Basic, Standard, Premium
+
+# Enable Redis data persistence (Premium SKU only)
+redis_enable_non_ssl_port = false
+
+# Resource tagging
+tags = {
+  Project     = "Finarva"
+  Environment = "Production"
+  ManagedBy   = "Terraform"
+  Owner       = "DevOps Team"
+  CostCenter  = "Engineering"
+}
+
+# =============================================================================
+# ADVANCED CONFIGURATION (Optional)
+# =============================================================================
+
+# Application Configuration
+# app_port = 3000  # Default application port
+
+# Storage Account
+# storage_account_tier             = "Standard"
+# storage_account_replication_type = "LRS"  # LRS, GRS, RAGRS, ZRS
+
+# Monitoring
+# log_analytics_retention_days = 30
+
+# Network Configuration
+# vnet_address_space = ["10.0.0.0/16"]
+# subnet_address_prefixes = ["10.0.1.0/24"]
+
+# =============================================================================
+# SECURITY BEST PRACTICES
+# =============================================================================
+# 1. Use Azure Key Vault for secrets (db passwords, API keys)
+# 2. Whitelist only necessary IPs in allowed_ssh_ips
+# 3. Enable Azure Security Center
+# 4. Use managed identities where possible
+# 5. Rotate credentials regularly
+# 6. Enable disk encryption for production VMs
+# 7. Use Premium Redis with data persistence for production
+# 8. Enable Azure Defender for additional security
+
+# =============================================================================
+# COST OPTIMIZATION
+# =============================================================================
+# Development: B-series VMs, Basic Redis, single-zone storage
+# Staging: B-series or D-series VMs, Standard Redis
+# Production: D-series VMs, Premium Redis with persistence, geo-redundant storage
+#
+# Use Azure Pricing Calculator: https://azure.microsoft.com/pricing/calculator/
+# Enable auto-shutdown for dev/staging VMs to save costs

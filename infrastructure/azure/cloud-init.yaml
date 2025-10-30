@@ -1,0 +1,349 @@
+#cloud-config
+
+# =============================================================================
+# FINARVA - CLOUD-INIT CONFIGURATION
+# =============================================================================
+# This script runs on first boot to configure the Azure VM
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker.io
+  - docker-compose
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+  - ufw
+  - git
+  - curl
+  - wget
+  - htop
+  - vim
+  - jq
+
+groups:
+  - docker
+
+users:
+  - default
+  - name: finarva
+    groups: docker
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+
+runcmd:
+  # Configure Docker
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker azureuser
+  - usermod -aG docker finarva
+
+  # Configure Firewall
+  - ufw allow 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw allow 3000/tcp
+  - ufw --force enable
+
+  # Create application directories
+  - mkdir -p /opt/finarva/{app,backups,logs,nginx}
+  - chown -R finarva:finarva /opt/finarva
+
+  # Enable Nginx
+  - systemctl enable nginx
+  - ln -sf /etc/nginx/sites-available/finarva /etc/nginx/sites-enabled/
+  - rm -f /etc/nginx/sites-enabled/default
+  - nginx -t && systemctl restart nginx
+
+  # Setup log rotation
+  - |
+    cat > /etc/logrotate.d/finarva << 'EOF'
+    /opt/finarva/logs/*.log {
+      daily
+      rotate 7
+      compress
+      delaycompress
+      missingok
+      notifempty
+      create 0640 finarva finarva
+      sharedscripts
+      postrotate
+        docker-compose -f /opt/finarva/docker-compose.yml restart app > /dev/null 2>&1 || true
+      endscript
+    }
+    EOF
+
+  # Setup automatic security updates
+  - apt-get install -y unattended-upgrades
+  - dpkg-reconfigure -plow unattended-upgrades
+
+write_files:
+  # Nginx configuration for Finarva API
+  - path: /etc/nginx/sites-available/finarva
+    content: |
+      upstream finarva_backend {
+        server 127.0.0.1:3000 fail_timeout=0;
+      }
+
+      # HTTP redirect to HTTPS
+      server {
+        listen 80;
+        listen [::]:80;
+        server_name _;
+        
+        # Allow certbot for SSL certificate
+        location /.well-known/acme-challenge/ {
+          root /var/www/html;
+        }
+        
+        # Redirect all other traffic to HTTPS
+        location / {
+          return 301 https://$host$request_uri;
+        }
+      }
+
+      # HTTPS server
+      server {
+        listen 443 ssl http2;
+        listen [::]:443 ssl http2;
+        server_name _;
+
+        # SSL configuration (will be managed by certbot)
+        ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+        ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+
+        # Logging
+        access_log /opt/finarva/logs/nginx-access.log;
+        error_log /opt/finarva/logs/nginx-error.log;
+
+        # Max upload size
+        client_max_body_size 10M;
+
+        # Proxy settings
+        location / {
+          proxy_pass http://finarva_backend;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection 'upgrade';
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_cache_bypass $http_upgrade;
+          proxy_read_timeout 300s;
+          proxy_connect_timeout 75s;
+        }
+
+        # Health check endpoint (no proxy)
+        location /health {
+          proxy_pass http://finarva_backend/health;
+          access_log off;
+        }
+      }
+
+  # Docker Compose configuration
+  - path: /opt/finarva/docker-compose.yml
+    owner: finarva:finarva
+    permissions: '0644'
+    content: |
+      version: '3.8'
+
+      services:
+        app:
+          image: ghcr.io/techysphinx/finarva:latest
+          container_name: finarva-api
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:3000:3000"
+          environment:
+            - NODE_ENV=production
+            - PORT=3000
+          env_file:
+            - .env
+          volumes:
+            - ./logs:/app/logs
+          networks:
+            - finarva-network
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+          logging:
+            driver: "json-file"
+            options:
+              max-size: "10m"
+              max-file: "3"
+
+      networks:
+        finarva-network:
+          driver: bridge
+
+  # Environment template
+  - path: /opt/finarva/.env.template
+    owner: finarva:finarva
+    permissions: '0600'
+    content: |
+      # =============================================================================
+      # FINARVA PRODUCTION ENVIRONMENT CONFIGURATION
+      # =============================================================================
+
+      # Application
+      NODE_ENV=production
+      PORT=3000
+      API_PREFIX=api/v1
+
+      # Database (MongoDB Atlas or local)
+      DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/finarva?retryWrites=true&w=majority
+
+      # Redis (Azure Redis Cache)
+      REDIS_HOST=your-redis-hostname.redis.cache.windows.net
+      REDIS_PORT=6380
+      REDIS_PASSWORD=your-redis-primary-key
+      REDIS_TLS=true
+
+      # JWT Authentication
+      JWT_SECRET=generate-a-strong-random-secret-key-here
+      JWT_EXPIRES_IN=24h
+      JWT_REFRESH_SECRET=generate-another-strong-secret
+      JWT_REFRESH_EXPIRES_IN=7d
+
+      # AI Services
+      OPENAI_API_KEY=sk-your-openai-api-key
+      GOOGLE_AI_API_KEY=your-google-gemini-api-key
+      PINECONE_API_KEY=your-pinecone-api-key
+      PINECONE_ENVIRONMENT=your-pinecone-environment
+      PINECONE_INDEX_NAME=finarva-knowledge-base
+
+      # Stripe Payment Processing
+      STRIPE_SECRET_KEY=sk_live_your-stripe-secret-key
+      STRIPE_PUBLISHABLE_KEY=pk_live_your-stripe-publishable-key
+      STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
+
+      # CORS Configuration
+      CORS_ORIGIN=https://yourdomain.com,https://www.yourdomain.com
+      CORS_CREDENTIALS=true
+
+      # Rate Limiting
+      RATE_LIMIT_TTL=60
+      RATE_LIMIT_LIMIT=100
+
+      # Logging
+      LOG_LEVEL=info
+      LOG_FORMAT=json
+
+  # Deployment script
+  - path: /opt/finarva/deploy.sh
+    owner: finarva:finarva
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      echo "🚀 Deploying Finarva API..."
+
+      cd /opt/finarva
+
+      # Pull latest image
+      echo "📦 Pulling latest Docker image..."
+      docker-compose pull
+
+      # Stop current containers
+      echo "⏹️  Stopping current containers..."
+      docker-compose down
+
+      # Start new containers
+      echo "▶️  Starting new containers..."
+      docker-compose up -d
+
+      # Wait for health check
+      echo "⏳ Waiting for application to be healthy..."
+      sleep 10
+
+      # Check health
+      if curl -f http://localhost:3000/health > /dev/null 2>&1; then
+        echo "✅ Deployment successful!"
+        echo "🌐 API is running at: http://$(curl -s ifconfig.me):3000"
+      else
+        echo "❌ Health check failed!"
+        docker-compose logs --tail=50 app
+        exit 1
+      fi
+
+  # Backup script
+  - path: /opt/finarva/backup.sh
+    owner: finarva:finarva
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      BACKUP_DIR="/opt/finarva/backups"
+      DATE=$(date +%Y%m%d_%H%M%S)
+
+      echo "🔄 Creating backup at $DATE..."
+
+      # Create backup directory
+      mkdir -p $BACKUP_DIR
+
+      # Backup logs
+      tar -czf $BACKUP_DIR/logs_$DATE.tar.gz -C /opt/finarva logs/
+
+      # Backup environment configuration
+      cp /opt/finarva/.env $BACKUP_DIR/.env_$DATE
+
+      # Keep only last 7 days of backups
+      find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
+      find $BACKUP_DIR -name ".env_*" -mtime +7 -delete
+
+      echo "✅ Backup completed: $BACKUP_DIR"
+
+  # System monitoring script
+  - path: /opt/finarva/monitor.sh
+    owner: finarva:finarva
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+
+      echo "=== Finarva System Monitor ==="
+      echo ""
+      echo "📊 System Resources:"
+      echo "CPU: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}')%"
+      echo "Memory: $(free -h | awk '/^Mem:/ {print $3 "/" $2}')"
+      echo "Disk: $(df -h / | awk 'NR==2 {print $3 "/" $2 " (" $5 " used)"}')"
+      echo ""
+      echo "🐳 Docker Status:"
+      docker-compose -f /opt/finarva/docker-compose.yml ps
+      echo ""
+      echo "🏥 Health Check:"
+      curl -s http://localhost:3000/health | jq '.' || echo "❌ Health check failed"
+      echo ""
+      echo "📝 Recent Logs (last 20 lines):"
+      docker-compose -f /opt/finarva/docker-compose.yml logs --tail=20 app
+
+final_message: |
+  ✅ Finarva VM initialization complete!
+
+  Next steps:
+  1. SSH into the VM: ssh azureuser@<VM_IP>
+  2. Configure environment: cd /opt/finarva && cp .env.template .env && nano .env
+  3. Deploy application: ./deploy.sh
+  4. Setup SSL: sudo certbot --nginx -d yourdomain.com
+
+  Useful commands:
+  - Deploy: cd /opt/finarva && ./deploy.sh
+  - Logs: docker-compose -f /opt/finarva/docker-compose.yml logs -f
+  - Monitor: /opt/finarva/monitor.sh
+  - Backup: /opt/finarva/backup.sh
